@@ -2,16 +2,42 @@ from graph_tool.all import *
 from PIL import Image
 import heatmap
 import numpy as np
+import time
+
+class payload():
+    def __init__(self, s, im, i1, i2, i3, i4, c1a, c1b, c2a, c2b, r, d, pN, pE, pS, pW, pStay):
+        self.susceptible  = s
+        self.immune       = im
+        self.incubation1  = i1
+        self.incubation2  = i2
+        self.incubation3  = i3
+        self.incubation4  = i4
+        self.contagious1a = c1a
+        self.contagious1b = c1b
+        self.contagious2a = c2a
+        self.contagious2b = c2b
+        self.recovered    = r
+        self.dead         = d
+        self.probNorth    = pN
+        self.probEast     = pE
+        self.probSouth    = pS
+        self.probWest     = pW
+        self.probStay     = pStay
+
+
 
 # --- PRINT GRAPH STATISTICS (number of nodes, number of edges)
 def printStats(g):
     print "nodes %d, edges %d " % (len(list(g.vertices())), len(list(g.edges())))
 
+start = time.time()
 # --- CREATE GRAPH (directed)
 g = Graph()
+print "CREATED GRAPH: " + str((time.time() - start))
+start = time.time()
 
 # --- ADD ATTRIBUTES (double-precision floating point)
-g_susceptible  = g.new_vertex_property("double") 
+g_payload  = g.new_vertex_property("object") 
 g_immune       = g.new_vertex_property("double")
 g_incubation1  = g.new_vertex_property("double")
 g_incubation2  = g.new_vertex_property("double")
@@ -29,6 +55,9 @@ g_probSouth    = g.new_vertex_property("double")
 g_probWest     = g.new_vertex_property("double")
 g_probStay     = g.new_vertex_property("double")
 
+print "ADDED VERTEX PROPERTIES: " + str((time.time() - start))
+start = time.time()
+
 # --- CONSTANTS
 population = 100
 immune_percentage = .15
@@ -39,6 +68,8 @@ c_total = 0
 
 # --- ADD 256 * 256 VERTICES
 vlist = g.add_vertex(GRAPH_SIZE)
+print "ADDED VERTICES: " + str((time.time() - start))
+start = time.time()
 
 printStats(g)
 # --- SET VERTEX PROPERTIES 
@@ -60,6 +91,9 @@ for i in range(0, GRAPH_SIZE):
     g_probSouth[g.vertex(i)]    = .1
     g_probWest[g.vertex(i)]     = .05
     g_probStay[g.vertex(i)]     = .3
+
+print "SET VERTEX PROPERTIES: " + str((time.time() - start))
+start = time.time()
 
 printStats(g)
 # --- CONNECT ALL NODES (directed graph)
@@ -111,6 +145,9 @@ for i in range(0, GRAPH_SIZE):
             g.add_edge(i, i - 1)
             g.add_edge(i, i + 1)
 
+print "ADDED EDGES: " + str((time.time() - start))
+start = time.time()
+
 printStats(g)
 
 s = (256, 256)
@@ -124,15 +161,19 @@ for i in range(0, GRAPH_SIZE / 256):
         p2[i,j] = g_incubation1[g.vertex(i + j)] + g_incubation2[g.vertex(i + j)] + g_incubation3[g.vertex(i + j)] + g_incubation4[g.vertex(i + j)]
         p3[i,j] = g_contagious1a[g.vertex(i + j)] + g_contagious2a[g.vertex(i + j)]
 
-hm = heatmap.Heatmap()
-img = hm.heatmap(p1)
-img.save("/Users/paul.warren/Documents/ebola/images/t1.png")
+import ColorMap
 
-img = hm.heatmap(p2)
-img.save("/Users/paul.warren/Documents/ebola/images/t2.png")
+print p1
 
-img = hm.heatmap(p3)
-img.save("/Users/paul.warren/Documents/ebola/images/t3.png")
+img1 = Image.fromarray(ColorMap.colorMap(p1))
+img1.save("/Users/paul.warren/Documents/ebola/images/mapped.png")
+
+print "FINISHED IMAGE SHIT: " + str((time.time() - start))
+# v[0].g_susceptible 
+
+
+# img1.show()
+
 # img = Image.new('RGB', (256,256), "black")
 # pixels = img.load()
 # for i in range(img.size[0]):    # for every pixel:
@@ -166,17 +207,6 @@ img.save("/Users/paul.warren/Documents/ebola/images/t3.png")
         # p1[i,j] = (g.GetFltAttrDatN(i + j, "s") + g.GetFltAttrDatN(i + j, "im"))
         # p2[i,j] = (g.GetFltAttrDatN(i + j, "i1") + g.GetFltAttrDatN(i + j, "i2") + g.GetFltAttrDatN(i + j, "i3") + g.GetFltAttrDatN(i + j, "i4"))
         # p3[i,j] = (g.GetFltAttrDatN(i + j, "c1a") + g.GetFltAttrDatN(i + j, "c2a"))
-
-print(p1)
-
-out = p1 - np.amin(p1)
-out /= np.amax(p1)
-
-import cv2
-cv2.imshow("p1",p1)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
-
 # print(p1)
 # print(p2)
 # print(p3)

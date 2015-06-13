@@ -115,12 +115,10 @@ for i in range(0, GRAPH_SIZE / 256):
         p3[i,j] = payload.contagious1a + payload.contagious2a
 
 import ColorMap
-
-print p1
-
 img1 = Image.fromarray(ColorMap.colorMap(p1))
 # img1.save("/Users/paul.warren/Documents/ebola/images/mapped.png")
 img1.show()
+
 
 
 

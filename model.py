@@ -6,18 +6,18 @@ def printStats(g):
 
 class Node():
     def __init__(self, nid, latitude, longitude, population, probNorth, northNID, probEast, eastNID, probSouth, southNID, probWest, westNID, probStay):
-        self.nid        = nid
+        self.nid        = int(nid)
         self.latitude   = latitude   
         self.longitude  = longitude    
         self.population = population     
         self.probNorth  = probNorth    
-        self.northNID   = northNID
+        self.northNID   = int(northNID)
         self.probEast   = probEast   
-        self.eastNID    = eastNID  
+        self.eastNID    = int(eastNID)
         self.probSouth  = probSouth    
-        self.southNID   = southNID   
+        self.southNID   = int(southNID)   
         self.probWest   = probWest   
-        self.westNID    = westNID  
+        self.westNID    = int(westNID)
         self.probStay   = probStay
 
         self.immune = node.population * self.immuneRate

@@ -1,4 +1,5 @@
 from snap import *
+import numpy as np
 # import sys
 
 def printStats(s, g):
@@ -124,13 +125,18 @@ for i in range(0, 256 * 256):
 
 printStats("Test Model", g)
 
-# img = Image.new( 'RGB', (255,255), "black") # create a new black image
-# pixels = img.load() # create the pixel map
- 
-# for i in range(img.size[0]):    # for every pixel:
-#     for j in range(img.size[1]):
-#         pixels[i,j] = (i, j, 100) # set the colour accordingly
-# img.show()
+img = Image.new( 'RGB', (255,255), "black") # create a new black image
+pixels = img.load() # create the pixel map
+
+for i in range(0, 256):
+    for j in range(0, 256):
+        NI = Graph.BegNI()
+        
+
+for i in range(img.size[0]):    # for every pixel:
+    for j in range(img.size[1]):
+        pixels[i,j] = (i, j, 100) # set the colour accordingly
+img.show()
 
 # get all the nodes
 # NCount = 0

@@ -1,5 +1,6 @@
 from graph_tool.all import *
 from PIL import Image
+import heatmap
 import numpy as np
 
 # --- PRINT GRAPH STATISTICS (number of nodes, number of edges)
@@ -62,7 +63,7 @@ for i in range(0, GRAPH_SIZE):
 
 printStats(g)
 # --- CONNECT ALL NODES (directed graph)
-for i in range(0, 256 * 256):
+for i in range(0, GRAPH_SIZE):
     if i < 256:
         if i % 256 == 0:
             # leftmost point, connect with +256, +1
@@ -112,20 +113,39 @@ for i in range(0, 256 * 256):
 
 printStats(g)
 
-img = Image.new('RGB', (256,256), "black")
-pixels = img.load()
-for i in range(img.size[0]):    # for every pixel:
-    for j in range(img.size[1]):
-        pixels[i,j] = (i, j, 100) # set the colour accordingly
-img.show()
+s = (256, 256)
+p1 = np.zeros(s, dtype=np.float64)
+p2 = np.zeros(s, dtype=np.float64)
+p3 = np.zeros(s, dtype=np.float64)
+
+for i in range(0, GRAPH_SIZE / 256):
+    for j in range(0, GRAPH_SIZE / 256):
+        p1[i,j] = g_susceptible[g.vertex(i + j)] + g_immune[g.vertex(i + j)]
+        p2[i,j] = g_incubation1[g.vertex(i + j)] + g_incubation2[g.vertex(i + j)] + g_incubation3[g.vertex(i + j)] + g_incubation4[g.vertex(i + j)]
+        p3[i,j] = g_contagious1a[g.vertex(i + j)] + g_contagious2a[g.vertex(i + j)]
+
+hm = heatmap.Heatmap()
+img = hm.heatmap(p1)
+img.save("/Users/paul.warren/Documents/ebola/images/t1.png")
+
+img = hm.heatmap(p2)
+img.save("/Users/paul.warren/Documents/ebola/images/t2.png")
+
+img = hm.heatmap(p3)
+img.save("/Users/paul.warren/Documents/ebola/images/t3.png")
+# img = Image.new('RGB', (256,256), "black")
+# pixels = img.load()
+# for i in range(img.size[0]):    # for every pixel:
+#     for j in range(img.size[1]):
+
+#         pixels[i,j] = (i, j, 100) # set the colour accordingly
+# img.show()
 
 # # img = Image.new( 'RGB', (255,255), "black") # create a new black image
 # # pixels = img.load() # create the pixel map
 # print(g.GetFltAttrDatN(0, "s"))
 # t = (256, 256)
-# p1 = np.zeros(t, dtype=np.float64)
-# p2 = np.zeros(t, dtype=np.float64)
-# p3 = np.zeros(t, dtype=np.float64)
+
 # print(g.GetFltAttrDatN(0, "s"))
 # # get all the nodes
 # NI = g.BegNI()

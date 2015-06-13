@@ -1,3 +1,4 @@
+
 __author__ = 'Dan.Simon'
 
 import numpy as np
@@ -10,7 +11,8 @@ def colorMap(gray):
     out[:,:,2] = np.clip(gray,0,1.0)
     out[:,:,1] = np.clip(gray-1,0,1.0)
     out[:,:,0] = np.clip(gray-2,0,1.0)
-    return out
+    out *= 255
+    return out.astype(np.uint8)
 
 if __name__ == '__main__':
     import cv2

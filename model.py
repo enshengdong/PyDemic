@@ -143,6 +143,16 @@ for i in range(0, 256):
         p2[i,j] = (g.GetFltAttrDatN(i + j, "i1") + g.GetFltAttrDatN(i + j, "i2") + g.GetFltAttrDatN(i + j, "i3") + g.GetFltAttrDatN(i + j, "i4"))
         p3[i,j] = (g.GetFltAttrDatN(i + j, "c1a") + g.GetFltAttrDatN(i + j, "c2a"))
 
+print(p1)
+
+out = p1 - np.amin(p1)
+out /= np.amax(p1)
+
+import cv2
+cv2.imshow("p1",p1)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+
 # print(p1)
 # print(p2)
 # print(p3)

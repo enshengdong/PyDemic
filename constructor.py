@@ -10,9 +10,9 @@ def printStats(g):
     print "nodes %d, edges %d " % (len(list(g.vertices())), len(list(g.edges())))
 
 class Constructor():
-    def __init__(self, numVertices):
-        
+    def __init__(self, filename):
         # --- INITIALIZE (direct) GRAPH with node payloads
+        
         g = Graph()
         g_payload = g.new_vertex_property("object") 
         self.vlist = g.add_vertex(numVertices)

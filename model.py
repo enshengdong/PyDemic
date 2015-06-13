@@ -4,7 +4,7 @@ import heatmap
 import numpy as np
 import time
 
-class payload():
+class Payload():
     def __init__(self, s, im, i1, i2, i3, i4, c1a, c1b, c2a, c2b, r, d, pN, pE, pS, pW, pStay):
         self.susceptible  = s
         self.immune       = im
@@ -24,7 +24,11 @@ class payload():
         self.probWest     = pW
         self.probStay     = pStay
 
+    def getSusceptible(self):
+        return self.susceptible
 
+    def getImmune(self):
+        return self.immune
 
 # --- PRINT GRAPH STATISTICS (number of nodes, number of edges)
 def printStats(g):
@@ -37,23 +41,7 @@ print "CREATED GRAPH: " + str((time.time() - start))
 start = time.time()
 
 # --- ADD ATTRIBUTES (double-precision floating point)
-g_payload  = g.new_vertex_property("object") 
-g_immune       = g.new_vertex_property("double")
-g_incubation1  = g.new_vertex_property("double")
-g_incubation2  = g.new_vertex_property("double")
-g_incubation3  = g.new_vertex_property("double")
-g_incubation4  = g.new_vertex_property("double")
-g_contagious1a = g.new_vertex_property("double")
-g_contagious1b = g.new_vertex_property("double")
-g_contagious2a = g.new_vertex_property("double")
-g_contagious2b = g.new_vertex_property("double")
-g_recovered    = g.new_vertex_property("double")
-g_dead         = g.new_vertex_property("double")
-g_probNorth    = g.new_vertex_property("double")
-g_probEast     = g.new_vertex_property("double")
-g_probSouth    = g.new_vertex_property("double")
-g_probWest     = g.new_vertex_property("double")
-g_probStay     = g.new_vertex_property("double")
+g_payload = g.new_vertex_property("object") 
 
 print "ADDED VERTEX PROPERTIES: " + str((time.time() - start))
 start = time.time()
@@ -74,23 +62,7 @@ start = time.time()
 printStats(g)
 # --- SET VERTEX PROPERTIES 
 for i in range(0, GRAPH_SIZE):
-    g_susceptible[g.vertex(i)]  = population * (1 - immune_percentage)
-    g_immune[g.vertex(i)]       = population * immune_percentage
-    g_incubation1[g.vertex(i)]  = 0.0
-    g_incubation2[g.vertex(i)]  = 0.0
-    g_incubation3[g.vertex(i)]  = 0.0
-    g_incubation4[g.vertex(i)]  = 0.0
-    g_contagious1a[g.vertex(i)] = 0.0
-    g_contagious1b[g.vertex(i)] = 0.0
-    g_contagious2a[g.vertex(i)] = 0.0
-    g_contagious2b[g.vertex(i)] = 0.0
-    g_recovered[g.vertex(i)]    = 0.0
-    g_dead[g.vertex(i)]         = 0.0
-    g_probNorth[g.vertex(i)]    = .5
-    g_probEast[g.vertex(i)]     = .05
-    g_probSouth[g.vertex(i)]    = .1
-    g_probWest[g.vertex(i)]     = .05
-    g_probStay[g.vertex(i)]     = .3
+    g_payload[g.vertex(i)] = Payload(population * (1 - immune_percentage), population * immune_percentage, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, .5, .05, .1, .05, .3)
 
 print "SET VERTEX PROPERTIES: " + str((time.time() - start))
 start = time.time()
@@ -157,18 +129,22 @@ p3 = np.zeros(s, dtype=np.float64)
 
 for i in range(0, GRAPH_SIZE / 256):
     for j in range(0, GRAPH_SIZE / 256):
-        p1[i,j] = g_susceptible[g.vertex(i + j)] + g_immune[g.vertex(i + j)]
-        p2[i,j] = g_incubation1[g.vertex(i + j)] + g_incubation2[g.vertex(i + j)] + g_incubation3[g.vertex(i + j)] + g_incubation4[g.vertex(i + j)]
-        p3[i,j] = g_contagious1a[g.vertex(i + j)] + g_contagious2a[g.vertex(i + j)]
+        payload = g_payload[g.vertex(i + j)]
+        p1[i,j] = payload.susceptible + payload.immune
+        p2[i,j] = payload.incubation1 + payload.incubation2 + payload.incubation3 + payload.incubation4
+        p3[i,j] = payload.contagious1a + payload.contagious2a
 
-import ColorMap
+print "DONE READING: " + str((time.time() - start))
+start = time.time()
 
-print p1
+# import ColorMap
 
-img1 = Image.fromarray(ColorMap.colorMap(p1))
-img1.save("/Users/paul.warren/Documents/ebola/images/mapped.png")
+# print p1
 
-print "FINISHED IMAGE SHIT: " + str((time.time() - start))
+# img1 = Image.fromarray(ColorMap.colorMap(p1))
+# img1.save("/Users/paul.warren/Documents/ebola/images/mapped.png")
+
+# print "FINISHED IMAGE SHIT: " + str((time.time() - start))
 # v[0].g_susceptible 
 
 

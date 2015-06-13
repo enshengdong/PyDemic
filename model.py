@@ -125,18 +125,34 @@ for i in range(0, 256 * 256):
 
 printStats("Test Model", g)
 
-img = Image.new( 'RGB', (255,255), "black") # create a new black image
-pixels = img.load() # create the pixel map
+# img = Image.new( 'RGB', (255,255), "black") # create a new black image
+# pixels = img.load() # create the pixel map
+
+t = (256, 256)
+p1 = np.zeros(t, dtype=np.float64)
+p2 = np.zeros(t, dtype=np.float64)
+p3 = np.zeros(t, dtype=np.float64)
+
+# get all the nodes
+NI = g.BegNI()
 
 for i in range(0, 256):
     for j in range(0, 256):
-        NI = Graph.BegNI()
-        
+        NI.Next()
+        p1[i,j] = (g.GetFltAttrDatN(i + j, "s") + g.GetFltAttrDatN(i + j, "im"))
+        p2[i,j] = (g.GetFltAttrDatN(i + j, "i1") + g.GetFltAttrDatN(i + j, "i2") + g.GetFltAttrDatN(i + j, "i3") + g.GetFltAttrDatN(i + j, "i4"))
+        p3[i,j] = (g.GetFltAttrDatN(i + j, "c1a") + g.GetFltAttrDatN(i + j, "c2a"))
 
-for i in range(img.size[0]):    # for every pixel:
-    for j in range(img.size[1]):
-        pixels[i,j] = (i, j, 100) # set the colour accordingly
-img.show()
+# print(p1)
+# print(p2)
+# print(p3)
+
+
+
+# for i in range(img.size[0]):    # for every pixel:
+#     for j in range(img.size[1]):
+#         pixels[i,j] = (i, j, 100) # set the colour accordingly
+# img.show()
 
 # get all the nodes
 # NCount = 0

@@ -1,4 +1,5 @@
 import numpy as np
+import time
 
 # --- PRINT GRAPH STATISTICS (number of nodes, number of edges)
 def printStats(g):
@@ -32,6 +33,20 @@ class Node():
         self.contagious2b = 0
         self.dead = 0
 
+    def infect(self):
+        """
+        subroutine of nodes run when an infected passes through
+        updates the number of infected and susceptible
+        """
+        y = 10 #people interacted with * transmission probability
+        I = np.random.poisson(y)
+        if I <= self.s:
+            self.s -= I
+            self.i1 += I
+        else:
+            self.i1 += self.s
+            self.s = 0
+
 
 class Model():
     def __init__(self, filename, immuneRate, fatalityRate, averageDistance):
@@ -45,19 +60,51 @@ class Model():
     def _readFile(self):
         with open(self.filename, "r") as f:
             numNodes = int(f.next().strip())
-            nodes = np.empty(numNodes)
+            nodes = np.empty(numNodes,dtype=np.object)
             count = 0
+            start = time.time()
             for line in f:
-                
-                inputs = [float(f) for f in line.split(':')]
+                inputs = [float(f) for f in line[:-1].split(':')]
                 inputs.append(self.immuneRate)
                 nodes[count] = Node(*(inputs))
                 count += 1
+            print("Graph creation time: "+str(time.time()-start))
+            print("Created %d nodes" % (count))
         return nodes
 
-    def turn():
+    def turn(self):
         # does a turn
         print "does a turn"
+
+    def travel(self):
+        """
+        Models a person traveling
+        At each step they choose a uniform random
+        That chooses to either stay or move in direction
+        The current node is the tile they are at
+        The temp node is their start node
+        """
+        for i in range(0,self.nodes.shape[0]):
+            temp = self.nodes[i]
+            for j in range(0,currNode.contagious1a):
+                currNode = temp
+                for step in range(0,self.maxDistance):
+                    direction = np.random.uniform()
+                    if direction < currNode.probStay:
+                        pass
+                    elif (direction-currNode.probStay) < currNode.probNorth:
+                        currNode = self.nodes[currNode.northNID]
+                    elif (direction-currNode.probStay-currNode.probNorth) \
+                        < currNode.probEast:
+                        currNode = self.nodes[currNode.eastNID]
+                    elif (direction-currNode.probStay-currNode.probNorth
+                        -currNode.probEast) < currNode.probSouth:
+                        currNode = self.nodes[currNode.southNID]
+                    else:
+                        currNode = self.nodes[currNode.westNID]
+                    currNode.infect()
+                currNode.contagious1b += 1
+                temp.contagious1a -= 1
 
 
 

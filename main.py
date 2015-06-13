@@ -7,7 +7,7 @@ fatalityRate = .5 # chance of dying vs recovering (becoming immune):
 averageDistance = 1000 # kilometers per day an average person in Africa can travel: 
 
 # --- START MODEL
-m = model.Model("filename", immuneRate, fatalityRate, averageDistance)
+m = model.Model("data/node.dat", immuneRate, fatalityRate, averageDistance)
 
 for i in range(0, 100):
 	m.turn()

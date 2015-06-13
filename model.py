@@ -5,7 +5,7 @@ def printStats(g):
     print "nodes %d, edges %d " % (len(list(g.vertices())), len(list(g.edges())))
 
 class Node():
-    def __init__(self, nid, latitude, longitude, population, probNorth, northNID, probEast, eastNID, probSouth, southNID, probWest, westNID, probStay):
+    def __init__(self, nid, latitude, longitude, population, probNorth, northNID, probEast, eastNID, probSouth, southNID, probWest, westNID, probStay, immuneRate):
         self.nid        = int(nid)
         self.latitude   = latitude   
         self.longitude  = longitude    
@@ -20,8 +20,8 @@ class Node():
         self.westNID    = int(westNID)
         self.probStay   = probStay
 
-        self.immune = node.population * self.immuneRate
-        self.susceptible = node.population - node.immune
+        self.immune = self.population * immuneRate
+        self.susceptible = self.population - self.immune
         self.incubation1 = 0
         self.incubation2 = 0
         self.incubation3 = 0
@@ -36,20 +36,23 @@ class Node():
 class Model():
     def __init__(self, filename, immuneRate, fatalityRate, averageDistance):
         self.filename = filename
-        self.nodes = self._readFile() # np.array of _Node objects
-
         self.immuneRate = immuneRate
         self.fatalityRate = fatalityRate 
         self.averageDistance = averageDistance
 
-        self._initializeNodes()
+        self.nodes = self._readFile() # np.array of _Node objects
 
     def _readFile(self):
-        with open(filename, "r") as f:
-            numNodes = int(f.readLine())
-            nodes = numpy.array([Node() * self.numNodes])
-            for count, line in enumerate(f.readlines()):
-                nodes[count] = Node(*([float(f) for f in line.split(':')].append(self.immuneRate)))
+        with open(self.filename, "r") as f:
+            numNodes = int(f.next().strip())
+            nodes = np.empty(numNodes)
+            count = 0
+            for line in f:
+                
+                inputs = [float(f) for f in line.split(':')]
+                inputs.append(self.immuneRate)
+                nodes[count] = Node(*(inputs))
+                count += 1
         return nodes
 
     def turn():

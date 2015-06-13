@@ -46,6 +46,13 @@ class Node():
             self.s = 0
 
     def travel(self):
+        """
+        Models a person traveling
+        At each step they choose a uniform random
+        That chooses to either stay or move in direction
+        The current node is the tile they are at
+        The temp node is their start node
+        """
         for i in range(0,self.nodes.shape[0]):
             temp = self.nodes[i]
             for j in range(0,currNode.contagious1a):

@@ -1,25 +1,48 @@
 from __future__ import print_function
 
-from osgeo import gdal
+from osgeo import gdal, osr
 import numpy
 import math
-
-popdata = gdal.Open('africa2010ppp.tif')
 
 roi_west = -17.490
 roi_east = 14.722
 roi_south = 4.171
 roi_north = 17.057
-
 km_in_deg = 1/111.12
+roi = ((roi_west, roi_east, km_in_deg),
+        (roi_south, roi_north, km_in_deg))
+
+# Load a WKT projection for the WGS84 datum
+wgs84 = osr.SpatialReference()
+wgs84.ImportFromEPSG(4326)
+wgs84 = wgs84.ExportToWkt()
+
+def getCoords(roi):
+    xcoords = numpy.arange(*(roi[0]))
+    ycoords = numpy.arange(*(roi[1]))[::-1]
+    return (xcoords, ycoords)
+
 
 # the geoTrans matrix appears to be a homogeneous coordinate transformation:
 # [ lon ]   [ gT[1] gt[2] gt[0] ][ x ]
 # [ lat ] = [ gT[4] gt[5] gt[3] ][ y ]
 # [  1  ] = [  0     0     1    ][ 1 ]
-
+#
+# this transforms from pixel coordinate space to latitude space
 # it should be fairly well conditioned so even though taking the inverse is not
 # necessarily ideal it's close enough.
+
+
+def createGeoTrans(roi):
+    (xcoords, ycoords) = getCoords(roi)
+    xr = xcoords.item(-1) - xcoords.item(0)
+    yr = ycoords.item(-1) - ycoords.item(0)
+    width = xr / len(xcoords)
+    height = yr / len(ycoords)
+    # for now hard code rotation to zero
+    rotX = 0
+    rotY = 0
+    return (xcoords.item(0), width, rotX, ycoords.item(0), rotY, height)
 
 def getGeoTransM(geoTrans):
     return numpy.matrix([
@@ -28,33 +51,15 @@ def getGeoTransM(geoTrans):
         [          0,           0,           1]
     ])
 
-
+# Get Location From Pixel
 def getPixelLoc(geoTransM, x, y):
     loc = geoTransM*numpy.matrix([[x],[y],[1]])
     return (loc.item(0), loc.item(1))
 
+# Get Pixel from Location
 def getLocPixel(geoTransMI, lon, lat):
-    px = [int(round(i.item(0))) for i in geoTransMI*numpy.matrix([[lon],[lat],[1]])]
+    px = [int(i.item(0)) for i in geoTransMI*numpy.matrix([[lon],[lat],[1]])]
     return (px[0], px[1])
-
-##
-## Process the popdata file
-##
-
-rows = popdata.RasterYSize
-cols = popdata.RasterXSize
-geo_trans = popdata.GetGeoTransform()
-geo_trans_m = getGeoTransM(geo_trans)
-geo_trans_mi = geo_trans_m.I
-
-#print('Image is {}x{} px'.format(cols, rows))
-#print('Corners:')
-#ext = [getPixelLoc(geo_trans_m, x, y) for x in [0, cols] for y in [0, rows]]
-#for corner in ext:
-#    print('\t{}'.format(corner))
-#print('Computed size is: {}'.format(getLocPixel(geo_trans_mi, *(ext[3]))))
-
-#for now, nodes will be (xi, yi) -> (nid, x, y, popdens)
 
 def recFromFunction(fn, shape, dtype):
     arr = numpy.zeros(shape, dtype=dtype)
@@ -65,8 +70,6 @@ def recFromFunction(fn, shape, dtype):
 
 # {lon,lat}data is a tuple (min, max, stride)
 def getClippedROIData(roi, geoTIFF, bandNum):
-    londata = roi[0]
-    latdata = roi[1]
     geotrans_int = geoTIFF.GetGeoTransform()
     geotrans = getGeoTransM(geotrans_int).I
     rows = geoTIFF.RasterYSize
@@ -74,8 +77,7 @@ def getClippedROIData(roi, geoTIFF, bandNum):
     band = geoTIFF.GetRasterBand(bandNum)
     emptyval = band.GetNoDataValue()
     data = band.ReadAsArray(0, 0, cols, rows).astype(numpy.float)
-    xcoords = numpy.arange(*londata)
-    ycoords = numpy.arange(*latdata)[::-1]
+    (xcoords, ycoords) = getCoords(roi)
     outdataType = numpy.dtype([
         ('value', numpy.float32),
         ('lat', numpy.float32),
@@ -84,8 +86,8 @@ def getClippedROIData(roi, geoTIFF, bandNum):
     outarr = numpy.zeros((len(ycoords), len(xcoords)), dtype=outdataType)
     if geotrans_int[2] == 0 and geotrans_int[4] == 0:
         # no rotation, so we can cheat
-        pxcoords = [getLocPixel(geotrans, xc, 0)[0] for xc in xcoords]
-        pycoords = [getLocPixel(geotrans, 0, yc)[1] for yc in ycoords]
+        pxcoords = [getPixelLoc(geotrans, xc, 0)[0] for xc in xcoords]
+        pycoords = [getPixelLoc(geotrans, 0, yc)[1] for yc in ycoords]
         for i in range(len(ycoords)):
             for j in range(len(xcoords)):
                 lat = ycoords.item(i)
@@ -107,46 +109,118 @@ def getClippedROIData(roi, geoTIFF, bandNum):
                 outarr[i, j] = numpy.array([(val, lat, lon)], dtype=outdataType)
     return outarr
 
-nodes = dict()
-adjlist = []
-nid = 0
-roi = ((roi_west, roi_east, km_in_deg),
-        (roi_south, roi_north, km_in_deg))
-data = getClippedROIData(roi, popdata, 1)
+def nidDataToArray(nid_data, roi, emptyval):
+    (xcoords, ycoords) = getCoords(roi)
+    arr = numpy.full((len(ycoords), len(xcoords)), emptyval, dtype=numpy.float32)
+    geotrans = createGeoTrans(roi)
+    geotrans_m = getGeoTransM(geotrans)
+    for node in nid_data:
+        (x, y) = getLocPixel(geotrans_m.I, node['lon'], node['lat'])
+        arr[y, x] = node['pop']
+    return (arr, geotrans)
 
-del popdata # free memory
-
-(ylen, xlen) = data.shape
-for yi in range(ylen):
-    for xi in range(xlen):
-        (lat, lon, val) = data.item((yi, xi))
-        if not math.isnan(val):
-            if xi != 0:
-                nbor = nodes.get((xi-1, yi))
-                if nbor is not None:
-                    adjlist.append((nid, nbor[0]))
-            if yi != 0:
-                nbor = nodes.get((xi, yi-1))
-                if nbor is not None:
-                    adjlist.append((nid, nbor[0]))
-            nodes[(xi, yi)] = (nid, lon, lat, val)
-            nid = nid + 1
-
+def exportGeoTIFF(fname, nid_data, roi, emptyval):
+    (arr, geotrans) = nidDataToArray(nid_data, roi, emptyval)
+    cols = arr.shape[1]
+    rows = arr.shape[0]
+    driver = gdal.GetDriverByName('GTiff')
+    # file name, xsize, ysize, numbands, datatype
+    outRaster = driver.Create(fname, cols, rows, 1, gdal.GDT_Float32)
+    outRaster.SetGeoTransform(geotrans)
+    outband = outRaster.GetRasterBand(1)
+    outband.SetNoDataValue(emptyval)
+    outband.WriteArray(arr)
+    outRaster.SetProjection(wgs84)
+    outband.FlushCache()
 
 
-with open('edges', 'w') as edgefile:
-    for edge in adjlist:
-        print('{}:{}'.format(*edge), file=edgefile)
+##
+## Process the popdata file
+##
+def main():
+    strip_threshold = -1
 
-with open('nodes', 'w') as nodefile:
+    popdata = gdal.Open('africa2010ppp.tif')
+    rows = popdata.RasterYSize
+    cols = popdata.RasterXSize
+    geo_trans = popdata.GetGeoTransform()
+    geo_trans_m = getGeoTransM(geo_trans)
+    geo_trans_mi = geo_trans_m.I
+
+    #print('Image is {}x{} px'.format(cols, rows))
+    #print('Corners:')
+    #ext = [getPixelLoc(geo_trans_m, x, y) for x in [0, cols] for y in [0, rows]]
+    #for corner in ext:
+    #    print('\t{}'.format(corner))
+    #print('Computed size is: {}'.format(getLocPixel(geo_trans_mi, *(ext[3]))))
+
+    #for now, nodes will be (xi, yi) -> (nid, x, y, popdens)
+    nodes = dict()
+    vert_edges = []
+    horiz_edges = []
+    nid = 0
+    data = getClippedROIData(roi, popdata, 1)
+
+    del popdata # free memory
+
+    # walk the data and create the nodes and lists of edges
+    (ylen, xlen) = data.shape
+    for yi in range(ylen):
+        for xi in range(xlen):
+            (val, lat, lon) = data.item((yi, xi))
+            if not math.isnan(val) and val > strip_threshold:
+                if xi != 0:
+                    nbor = nodes.get((xi-1, yi))
+                    if nbor is not None:
+                        horiz_edges.append((nid, nbor[0]))
+                if yi != 0:
+                    nbor = nodes.get((xi, yi-1))
+                    if nbor is not None:
+                        vert_edges.append((nid, nbor[0]))
+                nodes[(xi, yi)] = (nid, lon, lat, val)
+                nid = nid + 1
+
+    # create adjacency list graph structure
+    # nodes' values are nid, lon, lat, pop
+    # output format is nid, lat, lon, pop, pN, n, pE, e, pS, s, pW, w, pStay
+
+    nodeType = numpy.dtype([
+        ('nid', numpy.int32),
+        ('lat', numpy.float32),
+        ('lon', numpy.float32),
+        ('pop', numpy.float32),
+        ('Nprob', numpy.float32),
+        ('Nnid', numpy.int32),
+        ('Eprob', numpy.float32),
+        ('Enid', numpy.int32),
+        ('Sprob', numpy.float32),
+        ('Snid', numpy.int32),
+        ('Wprob', numpy.float32),
+        ('Wnid', numpy.int32),
+        ('probStay', numpy.float32)])
+    nodeArr = numpy.zeros(len(nodes), dtype=nodeType)
     for n in nodes.viewvalues():
-        print('{}:{}:{}:{}'.format(*n), file=nodefile)
+        (nid, lon, lat, pop) = n
+        nodeArr[nid] = numpy.array([(nid, lat, lon, pop, 1.0, -1, 0.0, -1, 0.0, -1, 0.0, -1, 0.0)], dtype=nodeType)
+    for edge in horiz_edges:
+        (eastnid, westnid) = edge
+        nodeArr[westnid]['Enid'] = eastnid
+        nodeArr[eastnid]['Wnid'] = westnid
+    for edge in vert_edges:
+        (southnid, northnid) = edge
+        nodeArr[southnid]['Nnid'] = northnid
+        nodeArr[northnid]['Snid'] = southnid
+    del nodes
+    del horiz_edges
+    del vert_edges
+    
+    # generate easy to read node listing
+    with open('node.dat', 'w') as nodefile:
+        print(len(nodeArr), file=nodefile)
+        for n in nodeArr:
+            print(':'.join([str(e) for e in n]), file=nodefile)
+    numpy.save('node.npy', nodeArr)
+    exportGeoTIFF('pop_out.tif', nodeArr, roi, float(numpy.finfo(numpy.float32).min))
 
-
-#numbands = popdata.RasterCount
-#print('File has {} data bands'.format(numbands))
-## NB: bands are indexed from *1*
-#for num in range(numbands):
-#    band = popdata.GetRasterBand(num+1)
-#    nodata = band.GetNoDataValue()
-
+if __name__ == '__main__':
+    main()

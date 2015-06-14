@@ -109,30 +109,43 @@ def getClippedROIData(roi, geoTIFF, bandNum):
                 outarr[i, j] = numpy.array([(val, lat, lon)], dtype=outdataType)
     return outarr
 
-def nidDataToArray(nid_data, roi, emptyval):
+def nidDataToArray(nid_data, roi, attr, emptyval):
     (xcoords, ycoords) = getCoords(roi)
     arr = numpy.full((len(ycoords), len(xcoords)), emptyval, dtype=numpy.float32)
     geotrans = createGeoTrans(roi)
     geotrans_m = getGeoTransM(geotrans)
     for node in nid_data:
         (x, y) = getLocPixel(geotrans_m.I, node['lon'], node['lat'])
-        arr[y, x] = node['pop']
+        arr[y, x] = node[attr]
     return (arr, geotrans)
 
-def exportGeoTIFF(fname, nid_data, roi, emptyval):
-    (arr, geotrans) = nidDataToArray(nid_data, roi, emptyval)
-    cols = arr.shape[1]
-    rows = arr.shape[0]
+def nidDataToArrayCB(nid_data, roi, callback, emptyval):
+    (xcoords, ycoords) = getCoords(roi)
+    arr = numpy.full((len(ycoords), len(xcoords)), emptyval, dtype=numpy.float32)
+    geotrans = createGeoTrans(roi)
+    geotrans_m = getGeoTransM(geotrans)
+    for node in nid_data:
+        (x, y) = getLocPixel(geotrans_m.I, node['lon'], node['lat'])
+        arr[y, x] = callback(node)
+    return (arr, geotrans)
+
+
+def exportGeoTIFF(fname, nid_data, roi, attr, emptyval):
+    (arr, geotrans) = nidDataToArray(nid_data, roi, attr, emptyval)
+    exportGeoTIFFRaster(fname, arr, geotrans, emptyval)
+
+def exportGeoTIFFRaster(fname, raster, geotrans, emptyval):
+    cols = raster.shape[1]
+    rows = raster.shape[0]
     driver = gdal.GetDriverByName('GTiff')
     # file name, xsize, ysize, numbands, datatype
     outRaster = driver.Create(fname, cols, rows, 1, gdal.GDT_Float32)
     outRaster.SetGeoTransform(geotrans)
     outband = outRaster.GetRasterBand(1)
     outband.SetNoDataValue(emptyval)
-    outband.WriteArray(arr)
+    outband.WriteArray(raster)
     outRaster.SetProjection(wgs84)
     outband.FlushCache()
-
 
 ##
 ## Process the popdata file
@@ -140,7 +153,7 @@ def exportGeoTIFF(fname, nid_data, roi, emptyval):
 def main():
     strip_threshold = -1
 
-    popdata = gdal.Open('africa2010ppp.tif')
+    popdata = gdal.Open('data/africa2010ppp.tif')
     rows = popdata.RasterYSize
     cols = popdata.RasterXSize
     geo_trans = popdata.GetGeoTransform()
@@ -220,7 +233,6 @@ def main():
         for n in nodeArr:
             print(':'.join([str(e) for e in n]), file=nodefile)
     numpy.save('node.npy', nodeArr)
-    exportGeoTIFF('pop_out.tif', nodeArr, roi, float(numpy.finfo(numpy.float32).min))
 
 if __name__ == '__main__':
     main()

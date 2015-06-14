@@ -7,9 +7,10 @@ maxpop = max(nodes['pop'])
 
 for node in nodes:
     p_stay_city = 1.0/(2*node['dCity']+1)
+    p_stay_hosp = 1.0/(2*node['dHosp']+1)
     p_stay_pop = (node['pop']/maxpop)**2
     p_stay_baseline = 0.001
-    probGo = (1-p_stay_city)*(1-p_stay_pop)*(1-p_stay_baseline)
+    probGo = (1-p_stay_city)*(1-p_stay_pop)*(1-p_stay_baseline)*(1-p_stay_hosp)
     node['probStay'] = 1 - probGo
     fitness = [0.0]*4
     nids = [node['Nnid'], node['Snid'], node['Enid'], node['Wnid']]

@@ -85,7 +85,7 @@ class Model():
                 #    break
             print("Graph creation time: " + str(time.time() - start))
             print("Created %d nodes" % (count))
-            nodes[10].incubation1 += 20
+            nodes[10].incubation1 += 30
             for i in range(0,5):
                 nodes[np.random.randint(0,numNodes)].incubation1 += 5
         return nodes
@@ -127,10 +127,9 @@ class Model():
         The temp node is their start node
         """
         for i in range(0,self.nodes.shape[0] - 1):
-            startNode = self.nodes[i]
-            for j in range(0,startNode.contagiousA):
-                curNode = startNode
-                for step in range(0,1000):
+            for j in range(0,self.nodes[i].contagiousA):
+                curNode = self.nodes[i]
+                for step in range(0,2050):
                     direction = np.random.uniform()
                     if direction < curNode.probStay:
                         pass
@@ -148,10 +147,10 @@ class Model():
                     curNode.dead += 1
                 else:
                     curNode.immune += 1
-                startNode.contagiousA -= 1
+                self.nodes[i].contagiousA -= 1
 
     def dump(self,frame):
-        with open("graph0.%d.dmp" % (frame),"w") as out:
+        with open("graphLong.%d.dmp" % (frame),"w") as out:
             for node in self.nodes:
                 if node is not None:
                     out.write(str(node)+"\n")

@@ -1,5 +1,5 @@
 import model
-
+import time
 
 # --- EVOLUTION FACTORS
 immuneRate = .1	 # percentage of people immune: 
@@ -14,6 +14,7 @@ print "Finished model. Starting turn..."
 #m.viz()
 for i in range(0,1000):
 	m.turn()
-	if i % 10 == 0:
+	start = time.time()
+	if i % 1 == 0:
 		m.dump(i)
-	print "Finished turn."
+	print "Finished turn %d in %d seconds" % (i,time.time()-start)

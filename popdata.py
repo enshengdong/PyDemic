@@ -4,6 +4,7 @@ from osgeo import gdal, osr
 import numpy
 import math
 
+# Define ROI
 roi_west = -17.490
 roi_east = 14.722
 roi_south = 4.171
@@ -17,6 +18,7 @@ wgs84 = osr.SpatialReference()
 wgs84.ImportFromEPSG(4326)
 wgs84 = wgs84.ExportToWkt()
 
+# Get a list of the coordinate locations along each axis of the ROI
 def getCoords(roi):
     xcoords = numpy.arange(*(roi[0]))
     ycoords = numpy.arange(*(roi[1]))[::-1]
@@ -32,7 +34,7 @@ def getCoords(roi):
 # it should be fairly well conditioned so even though taking the inverse is not
 # necessarily ideal it's close enough.
 
-
+# Create GDAL GeoTrans list from ROI
 def createGeoTrans(roi):
     (xcoords, ycoords) = getCoords(roi)
     xr = xcoords.item(-1) - xcoords.item(0)
@@ -44,6 +46,7 @@ def createGeoTrans(roi):
     rotY = 0
     return (xcoords.item(0), width, rotX, ycoords.item(0), rotY, height)
 
+# Convert GDAL GeoTrans list to a numpy matrix in homogeneous coordinates
 def getGeoTransM(geoTrans):
     return numpy.matrix([
         [geoTrans[1], geoTrans[2], geoTrans[0]],
@@ -51,12 +54,12 @@ def getGeoTransM(geoTrans):
         [          0,           0,           1]
     ])
 
-# Get Location From Pixel
+# Get Location From Pixel (call with matrix)
 def getPixelLoc(geoTransM, x, y):
     loc = geoTransM*numpy.matrix([[x],[y],[1]])
     return (loc.item(0), loc.item(1))
 
-# Get Pixel from Location
+# Get Pixel from Location (call with matrix inverse)
 def getLocPixel(geoTransMI, lon, lat):
     px = [int(i.item(0)) for i in geoTransMI*numpy.matrix([[lon],[lat],[1]])]
     return (px[0], px[1])
@@ -68,7 +71,9 @@ def recFromFunction(fn, shape, dtype):
             arr[i, j] = fn((i, j))
     return arr
 
-# {lon,lat}data is a tuple (min, max, stride)
+# Take a base geoTIFF and clip it to a certain ROI
+# We use this for the base layer, and then draw other
+# layers over top of it.
 def getClippedROIData(roi, geoTIFF, bandNum):
     geotrans_int = geoTIFF.GetGeoTransform()
     geotrans = getGeoTransM(geotrans_int).I
@@ -109,6 +114,8 @@ def getClippedROIData(roi, geoTIFF, bandNum):
                 outarr[i, j] = numpy.array([(val, lat, lon)], dtype=outdataType)
     return outarr
 
+# Get nid data for export (array attribute) from the node dump data
+# Array must be a numpy array supporting 'lat' and 'lon' accessors
 def nidDataToArray(nid_data, roi, attr, emptyval):
     (xcoords, ycoords) = getCoords(roi)
     arr = numpy.full((len(ycoords), len(xcoords)), emptyval, dtype=numpy.float32)
@@ -119,6 +126,7 @@ def nidDataToArray(nid_data, roi, attr, emptyval):
         arr[y, x] = float(node[attr])
     return (arr, geotrans)
 
+# Get nid data for export (using a callback) from the node dump data
 def nidDataToArrayCB(nid_data, roi, callback, emptyval):
     (xcoords, ycoords) = getCoords(roi)
     arr = numpy.full((len(ycoords), len(xcoords)), emptyval, dtype=numpy.float32)
@@ -129,11 +137,12 @@ def nidDataToArrayCB(nid_data, roi, callback, emptyval):
         arr[y, x] = callback(node)
     return (arr, geotrans)
 
-
+# Export a geoTIFF with the most common settings
 def exportGeoTIFF(fname, nid_data, roi, attr, emptyval):
     (arr, geotrans) = nidDataToArray(nid_data, roi, attr, emptyval)
     exportGeoTIFFRaster(fname, arr, geotrans, emptyval)
 
+# Export raster data from one of the nidDataToArray* funcitons
 def exportGeoTIFFRaster(fname, raster, geotrans, emptyval):
     cols = raster.shape[1]
     rows = raster.shape[0]
@@ -151,11 +160,14 @@ def exportGeoTIFFRaster(fname, raster, geotrans, emptyval):
 ## Process the popdata file
 ##
 def main():
+    # strip all things below a certain threshold
     strip_threshold = -1
 
     popdata = gdal.Open('data/africa2010ppp.tif')
     rows = popdata.RasterYSize
     cols = popdata.RasterXSize
+    
+    # Get transformation matrices
     geo_trans = popdata.GetGeoTransform()
     geo_trans_m = getGeoTransM(geo_trans)
     geo_trans_mi = geo_trans_m.I

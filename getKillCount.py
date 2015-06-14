@@ -17,5 +17,5 @@ for row in data:
         if x == emptyval:
             continue
         accumulate = accumulate + long(x)
-print(accumulate)
+print("{}: {}".format(sys.argv[1], accumulate))
 

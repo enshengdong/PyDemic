@@ -1,16 +1,13 @@
 import numpy as np
 import time
-
-# --- PRINT GRAPH STATISTICS (number of nodes, number of edges)
-def printStats(g):
-    print "nodes %d, edges %d " % (len(list(g.vertices())), len(list(g.edges())))
+from random import randint
 
 class Node():
     def __init__(self, nid, latitude, longitude, population, probNorth, northNID, probEast, eastNID, probSouth, southNID, probWest, westNID, probStay, immuneRate):
         self.nid        = int(nid)
         self.latitude   = latitude   
         self.longitude  = longitude    
-        self.population = population     
+        self.population = population * 10
         self.probNorth  = probNorth    
         self.northNID   = int(northNID)
         self.probEast   = probEast   
@@ -21,8 +18,9 @@ class Node():
         self.westNID    = int(westNID)
         self.probStay   = probStay
 
-        self.immune = self.population * immuneRate
-        self.susceptible = self.population - self.immune
+        self.immune = np.floor(self.population * immuneRate)
+        self.susceptible = np.round(self.population - self.immune)
+        print(self.susceptible)
         self.incubation1 = 0
         self.incubation2 = 0
         self.incubation3 = 0
@@ -33,48 +31,60 @@ class Node():
         self.contagious2b = 0
         self.dead = 0
 
-    def infect(self):
+    def infect(self, transmissionRate):
         """
         subroutine of nodes run when an infected passes through
         updates the number of infected and susceptible
         """
-        y = 10 #people interacted with * transmission probability
+        # numInfected = (self.susceptible * .001) * transmissionRate
+        y = 4
         I = np.random.poisson(y)
-        if I <= self.s:
-            self.s -= I
-            self.i1 += I
+        I = 1
+        if I <= self.susceptible:
+            self.susceptible -= I
+            self.incubation1 += I
         else:
-            self.i1 += self.s
-            self.s = 0
+            self.incubation1 += self.susceptible
+            self.susceptible = 0
+        print ("numSuscp = " + str(self.susceptible) + " and numInfected = " + str(y))
+
+        # if numInfected <= self.susceptible:
+        #     self.susceptible -= numInfected
+        #     self.incubation1 += numInfected
+        # else:
+        #     self.incubation1 += self.susceptible
+        #     self.susceptible = 0
 
 
 class Model():
-    def __init__(self, filename, immuneRate, fatalityRate, averageDistance):
+    def __init__(self, filename, immuneRate, fatalityRate, averageDistance, transmissionRate):
         self.filename = filename
         self.immuneRate = immuneRate
         self.fatalityRate = fatalityRate 
         self.averageDistance = averageDistance
+        self.transmissionRate = transmissionRate
 
         self.nodes = self._readFile() # np.array of _Node objects
 
     def _readFile(self):
         with open(self.filename, "r") as f:
+            start = time.time()
             numNodes = int(f.next().strip())
             nodes = np.empty(numNodes,dtype=np.object)
             count = 0
-            start = time.time()
             for line in f:
-                inputs = [float(f) for f in line[:-1].split(':')]
+                inputs = [float(f) for f in line.strip('\n').split(':')]
                 inputs.append(self.immuneRate)
                 nodes[count] = Node(*(inputs))
                 count += 1
-            print("Graph creation time: "+str(time.time()-start))
+            print("Graph Creation Time: " + str(time.time() - start))
             print("Created %d nodes" % (count))
         return nodes
 
     def turn(self):
-        # does a turn
-        print "does a turn"
+        self.travel()
+        print randint(0,self.nodes.shape[0])
+
 
     def travel(self):
         """
@@ -84,27 +94,33 @@ class Model():
         The current node is the tile they are at
         The temp node is their start node
         """
-        for i in range(0,self.nodes.shape[0]):
-            temp = self.nodes[i]
-            for j in range(0,currNode.contagious1a):
-                currNode = temp
-                for step in range(0,self.maxDistance):
+        print(self.nodes.shape[0])
+        for nodeID in range(0 , self.nodes.shape[0]):
+            print "Node %d" % nodeID
+            startNode = self.nodes[nodeID]
+            for contagiousPerson in range(0, startNode.contagious1a):
+                print ("Contagious person " + str(contagiousPerson) + " in node " + str(nodeID))
+                curNode = startNode
+                for step in range(0, self.averageDistance):
                     direction = np.random.uniform()
-                    if direction < currNode.probStay:
+                    if direction < curNode.probStay:
+                        print "Decided to stay."
                         pass
-                    elif (direction-currNode.probStay) < currNode.probNorth:
-                        currNode = self.nodes[currNode.northNID]
-                    elif (direction-currNode.probStay-currNode.probNorth) \
-                        < currNode.probEast:
-                        currNode = self.nodes[currNode.eastNID]
-                    elif (direction-currNode.probStay-currNode.probNorth
-                        -currNode.probEast) < currNode.probSouth:
-                        currNode = self.nodes[currNode.southNID]
+                    elif (direction - curNode.probStay) < curNode.probNorth:
+                        curNode = self.nodes[curNode.northNID]
+                        print "Decided to move North."
+                    elif (direction - curNode.probStay - curNode.probNorth) < curNode.probEast:
+                        curNode = self.nodes[curNode.eastNID]
+                        print "Decided to moved East."
+                    elif (direction - curNode.probStay - curNode.probNorth - curNode.probEast) < curNode.probSouth:
+                        curNode = self.nodes[curNode.southNID]
+                        print "Decided to move South."
                     else:
-                        currNode = self.nodes[currNode.westNID]
-                    currNode.infect()
-                currNode.contagious1b += 1
-                temp.contagious1a -= 1
+                        curNode = self.nodes[curNode.westNID]
+                        print "Decided to move West."
+                    curNode.infect(self.transmissionRate)
+                curNode.contagious1b += 1
+                startNode.contagious1a -= 1
 
 
 

@@ -2,10 +2,10 @@ import model
 import time
 
 # --- EVOLUTION FACTORS
-immuneRate = .1	 # percentage of people immune: 
-fatalityRate = .6 # chance of dying vs recovering (becoming immune): 
-averageDistance = 1000 # kilometers per day an average person in Africa can travel: 
-transmissionRate = .5 # chance you'll infect a given person
+immuneRate = .1	 # percentage of people immune
+fatalityRate = .6 # chance of dying vs recovering (becoming immune)
+averageDistance = 1000 # kilometers per day an average person in Africa can travel:
+transmissionRate = .5 # chance you'll infect a given person you come in contact with
 
 # --- START MODEL
 print "Starting model..."

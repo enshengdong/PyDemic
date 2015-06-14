@@ -1,20 +1,11 @@
 import numpy as np
 import time
-from popdata import *
-import cv2
-
-# --- PRINT GRAPH STATISTICS (number of nodes, number of edges)
-def printStats(g):
-    print "nodes %d, edges %d " % (len(list(g.vertices())),len(list(g.edges())))
-
 
 class Node():
-    def __init__(self,nid,latitude,longitude,population,probNorth,northNID,probEast,eastNID,probSouth,southNID,probWest,
-                 westNID,probStay,immuneRate):
+    def __init__(self,nid,latitude,longitude,population,probNorth,northNID,probEast,eastNID,probSouth,southNID,probWest,westNID,probStay,immuneRate):
         self.nid = int(nid)
         self.latitude = latitude
         self.longitude = longitude
-        #self.population = int(population)
         self.probNorth = probNorth
         self.northNID = int(northNID)
         self.probEast = probEast
@@ -25,16 +16,13 @@ class Node():
         self.westNID = int(westNID)
         self.probStay = probStay
 
-        self.immune = population * immuneRate
-        self.susceptible = population - self.immune
+        self.immune = int(round(population * immuneRate))
+        self.susceptible = int(round(population - self.immune))
         self.incubation1 = 0
         self.incubation2 = 0
-        self.incubation3 = 0
-        self.incubation4 = 0
-        self.contagious1a = 0
-        self.contagious1b = 0
-        self.contagious2a = 0
-        self.dead = np.random.random_integers(0,255)
+        self.contagiousA = 0
+        self.contagiousB = 0  
+        self.dead = 0
 
     def infect(self):
         """
@@ -43,25 +31,38 @@ class Node():
         """
         y = 10  # people interacted with * transmission probability
         I = np.random.poisson(y)
-        if I <= self.s:
-            self.s -= I
-            self.i1 += I
+        if I <= self.susceptible:
+            self.susceptible -= I
+            self.incubation1 += I
         else:
-            self.i1 += self.s
-            self.s = 0
+            self.incubation1 += self.susceptible
+            self.susceptible = 0
 
     def getLatLong(self):
         return [self.longitude,self.latitude,1.0]
 
     def getIncubating(self):
-        return self.incubation1 + self.incubation2 + self.incubation3 + self.incubation4
+        return self.incubation1 + self.incubation2
 
     def getContagious(self):
-        return self.contagious1a + self.contagious2a
+        return self.contagiousA + self.contagiousB
+
+    def __str__(self):
+        out = ""
+        out += str(self.latitude) + ":"
+        out += str(self.longitude) + ":"
+        out += str(self.immune) + ":"
+        out += str(self.susceptible) + ":"
+        out += str(self.incubation1) + ":"
+        out += str(self.incubation2) + ":"
+        out += str(self.contagiousA) + ":"
+        out += str(self.contagiousB) + ":"
+        out += str(self.dead)
+        return out
 
 
 class Model():
-    def __init__(self,filename,immuneRate,fatalityRate,averageDistance):
+    def __init__(self,filename,immuneRate,fatalityRate,averageDistance,transmissionRate):
         self.filename = filename
         self.immuneRate = immuneRate
         self.fatalityRate = fatalityRate
@@ -84,15 +85,38 @@ class Model():
                 #    break
             print("Graph creation time: " + str(time.time() - start))
             print("Created %d nodes" % (count))
-        print "file closed"
+            nodes[10].incubation1 += 20
+            for i in range(0,5):
+                nodes[np.random.randint(0,numNodes)].incubation1 += 5
         return nodes
 
     def turn(self):
-        print "Traveling..."
+        self.stateChange()
         self.travel()
-        for node in self.nodes:
-            node.contagious1a = node.contagious1b
-            node.contagious1b = 0
+        self.resetContagious()
+
+
+    def resetContagious(self):
+        for i in range(0,self.nodes.shape[0] - 1):
+            node = self.nodes[i]
+            node.contagiousA += node.contagiousB
+            node.contagiousB = 0
+
+    def stateChange(self):
+        for i in range(0,self.nodes.shape[0] - 1):
+            node = self.nodes[i]
+            # print("node.contagiousB = " + str(node.contagiousB))
+            node.contagiousB += node.incubation2
+            node.incubation2 = 0
+            numInc1 = node.incubation1
+            for i in range(0, numInc1):
+                if np.random.uniform() <= .5:
+                    node.incubation2 += 1
+                else:
+                    node.contagiousB += 1
+                node.incubation1 -= 1
+            for i in range(0, node.contagiousA + node.contagiousB):
+                node.infect()
 
     def travel(self):
         """
@@ -102,52 +126,35 @@ class Model():
         The current node is the tile they are at
         The temp node is their start node
         """
-        for i in range(0,self.nodes.shape[0]):
-            temp = self.nodes[i]
-            for j in range(0,currNode.contagious1a):
-                currNode = temp
-                for step in range(0,self.maxDistance):
+        for i in range(0,self.nodes.shape[0] - 1):
+            startNode = self.nodes[i]
+            for j in range(0,startNode.contagiousA):
+                curNode = startNode
+                for step in range(0,1000):
                     direction = np.random.uniform()
-                    if direction < currNode.probStay:
+                    if direction < curNode.probStay:
                         pass
-                    elif (direction - currNode.probStay) < currNode.probNorth:
-                        currNode = self.nodes[currNode.northNID]
-                    elif (direction - currNode.probStay - currNode.probNorth) \
-                            < currNode.probEast:
-                        currNode = self.nodes[currNode.eastNID]
-                    elif (direction - currNode.probStay - currNode.probNorth
-                              - currNode.probEast) < currNode.probSouth:
-                        currNode = self.nodes[currNode.southNID]
+                    elif (direction - curNode.probStay) < curNode.probNorth:
+                        curNode = self.nodes[curNode.northNID]
+                    elif (direction - curNode.probStay - curNode.probNorth) < curNode.probEast:
+                        curNode = self.nodes[curNode.eastNID]
+                    elif (direction - curNode.probStay - curNode.probNorth
+                              - curNode.probEast) < curNode.probSouth:
+                        curNode = self.nodes[curNode.southNID]
                     else:
-                        currNode = self.nodes[currNode.westNID]
-                    currNode.infect()
-                currNode.contagious1b += 1
-                temp.contagious1a -= 1
+                        curNode = self.nodes[curNode.westNID]
+                    curNode.infect()
+                if np.random.uniform() <= self.fatalityRate:
+                    curNode.dead += 1
+                else:
+                    curNode.immune += 1
+                startNode.contagiousA -= 1
 
-    def viz(self):
-        y = (roi[0][1] - roi[0][0]) / roi[0][2]
-        x = (roi[1][1] - roi[1][0]) / roi[1][2]
-        out = np.zeros((int(y) + 1,int(x) + 1,6),np.float32)
-        mat = getGeoTransM(createGeoTrans(roi))
-        latLongs = []
-        for i in range(0,1000000):
-            latLongs.append(self.nodes[i].getLatLong())
-        pixels = np.floor(np.clip(np.dot(mat.I,np.array(latLongs).T),0,np.inf)).T.astype(np.uint16)
-        print np.amax(pixels[:,0])
-        print np.amax(pixels[:,1])
-        print np.amin(pixels[:,0])
-        print np.amin(pixels[:,1])
-        print out.shape
-        for i in range(0,pixels.shape[0]):
-            out[pixels[i,0] - 2,pixels[i,1] - 2,0] = self.nodes[i].population
-            out[pixels[i,0] - 2,pixels[i,1] - 2,1] = self.nodes[i].immune
-            out[pixels[i,0] - 2,pixels[i,1] - 2,2] = self.nodes[i].susceptible
-            out[pixels[i,0] - 2,pixels[i,1] - 2,3] = self.nodes[i].getIncubating()
-            out[pixels[i,0] - 2,pixels[i,1] - 2,4] = self.nodes[i].getContagious()
-            out[pixels[i,0] - 2,pixels[i,1] - 2,5] = self.nodes[i].dead
-        out /= np.amax(out)
-        cv2.namedWindow("Layer",cv2.WINDOW_NORMAL)
-        for b in range(0,out.shape[2]):
-            cv2.imshow("Layer",out[:,:,b])
-            cv2.waitKey(0)
-        cv2.destroyAllWindows()
+    def dump(self,frame):
+        with open("graph0.%d.dmp" % (frame),"w") as out:
+            for node in self.nodes:
+                if node is not None:
+                    out.write(str(node)+"\n")
+
+
+

@@ -2,6 +2,8 @@ all: node.npy base_roi.tif pop_out.tif roads.tif
 
 node.npy: popdata.py data/africa2010ppp.tif
 	python popdata.py
+	python scrapeRoadData.py
+	python cities.py
 
 base_roi.tif: getROItiff.py node.npy
 	python getROItiff.py

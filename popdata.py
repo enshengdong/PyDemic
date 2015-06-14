@@ -116,7 +116,7 @@ def nidDataToArray(nid_data, roi, attr, emptyval):
     geotrans_m = getGeoTransM(geotrans)
     for node in nid_data:
         (x, y) = getLocPixel(geotrans_m.I, node['lon'], node['lat'])
-        arr[y, x] = node[attr]
+        arr[y, x] = float(node[attr])
     return (arr, geotrans)
 
 def nidDataToArrayCB(nid_data, roi, callback, emptyval):
@@ -210,11 +210,14 @@ def main():
         ('Snid', numpy.int32),
         ('Wprob', numpy.float32),
         ('Wnid', numpy.int32),
-        ('probStay', numpy.float32)])
+        ('probStay', numpy.float32),
+        ('isRoad', numpy.bool_),
+        ('dHosp', numpy.int32),
+        ('dCity', numpy.int32)])
     nodeArr = numpy.zeros(len(nodes), dtype=nodeType)
     for n in nodes.viewvalues():
         (nid, lon, lat, pop) = n
-        nodeArr[nid] = numpy.array([(nid, lat, lon, pop, 1.0, -1, 0.0, -1, 0.0, -1, 0.0, -1, 0.0)], dtype=nodeType)
+        nodeArr[nid] = numpy.array([(nid, lat, lon, pop, 1.0, -1, 0.0, -1, 0.0, -1, 0.0, -1, 0.0, False, 99999999999, 99999999999)], dtype=nodeType)
     for edge in horiz_edges:
         (eastnid, westnid) = edge
         nodeArr[westnid]['Enid'] = eastnid
@@ -231,7 +234,7 @@ def main():
     with open('node.dat', 'w') as nodefile:
         print(len(nodeArr), file=nodefile)
         for n in nodeArr:
-            print(':'.join([str(e) for e in n]), file=nodefile)
+            print(':'.join([str(e) for e in n][:-3]), file=nodefile)
     numpy.save('node.npy', nodeArr)
 
 if __name__ == '__main__':

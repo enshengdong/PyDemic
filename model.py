@@ -31,7 +31,7 @@ class Node():
         self.westNID = int(westNID)
         self.probStay = probStay
 
-        self.immune = int(round(population * immuneRate))
+        self.immune = np.random.poisson(int(population*immuneRate))
         self.susceptible = int(round(population - self.immune))
         self.incubation1 = 0
         self.incubation2 = 0
@@ -44,7 +44,7 @@ class Node():
         Subroutine that nodes run when a contagious person passes through to determine how many people that contagious person infects.
         Automatically updates information.
         """
-        y = 10  # people interacted with * transmission probability
+        y = 2 # people interacted with * transmission probability
         I = np.random.poisson(y)
         if I <= self.susceptible:
             self.susceptible -= I
@@ -129,7 +129,7 @@ class Model():
             nodes[10].incubation1 += 30
             for i in range(0,5):
                 nodes[np.random.randint(0,numNodes)].incubation1 += 5
-        return nodes
+        return nodes[:count]
 
     def turn(self):
         """
@@ -208,10 +208,13 @@ class Model():
         """
         Subroutine that prints out the data in the graph in a format convenient for our parser.
         """
+        dead = 0
         with open("graphLong.%d.dmp" % (frame),"w") as out:
             for node in self.nodes:
                 if node is not None:
+                    dead += node.dead
                     out.write(str(node)+"\n")
+        print "%d Dead" % dead
 
 
 

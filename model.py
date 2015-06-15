@@ -53,12 +53,6 @@ class Model():
         self.travel()
         self.resetContagious()
 
-    def resetContagious(self):
-        for i in range(0, len(self.nodes)):
-            node = self.nodes[i]
-            node.contagiousA += node.contagiousB
-            node.contagiousB = 0
-
     def changeStates(self):
         """
         Subroutine that determines, for every time step, moves everyone in incubation2 state
@@ -71,33 +65,32 @@ class Model():
         have one state transition a turn. ContagiousB is the set of contagious people who have already
         moved or done a state transition and so can't move for the rest of the timestep.
         """
-        for i in range(0,len(self.nodes)):
-            node = self.nodes[i]
-            # print("node.contagiousB = " + str(node.contagiousB))
+        for nodeID in range(0, len(self.nodes)):
+            node = self.nodes[nodeID]
             node.contagiousB += node.incubation2
             node.incubation2 = 0
             numInc1 = node.incubation1
-            for i in range(0, numInc1):
+            for incubation1Person in range(0, numInc1):
                 if np.random.uniform() <= .5:
                     node.incubation2 += 1
                 else:
                     node.contagiousB += 1
                 node.incubation1 -= 1
-            for i in range(0, node.contagiousA + node.contagiousB):
+            for contagiousPerson in range(0, node.contagiousA + node.contagiousB):
                 node.infect()
 
     def travel(self):
         """
         Subroutine goes through every contagious person who can travel, 
-        decides if stay or travel up to the given distance (2050km),
+        decides if stay or travel up to the given distance,
         runs the subroutine node.infect() for every node the contagious
         person travels to, and uses the given fatality rate to whether
         the contagious person dies or recovers.
         """
-        for i in range(0, len(self.nodes)):
-            for j in range(0, self.nodes[i].contagiousA):
-                curNode = self.nodes[i]
-                for step in range(0,2050):
+        for nodeID in range(0, len(self.nodes)):
+            for contagousPerson in range(0, self.nodes[nodeID].contagiousA):
+                curNode = self.nodes[nodeID]
+                for step in range(0, self.maxDistance):
                     direction = np.random.uniform()
                     if direction < curNode.probStay:
                         pass
@@ -115,7 +108,13 @@ class Model():
                     curNode.dead += 1
                 else:
                     curNode.immune += 1
-                self.nodes[i].contagiousA -= 1
+                self.nodes[nodeID].contagiousA -= 1
+
+    def resetContagious(self):
+        for nodeID in range(0, len(self.nodes)):
+            node = self.nodes[nodeID]
+            node.contagiousA += node.contagiousB
+            node.contagiousB = 0
 
     def dump(self, frame):
         """

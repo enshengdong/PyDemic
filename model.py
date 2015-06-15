@@ -2,7 +2,6 @@ import numpy as np
 import os, time
 import node
 
-
 class Model():
     """ 
     The Model classes represents our overall network-based model. It takes in a filename of all data necessary to initialize each node
@@ -28,7 +27,7 @@ class Model():
         Helper subroutine that reads the given filename and initializes all the nodes.
         """
         with open(self.filename, "r") as f:
-            numNodes = int(f.next().strip())
+            numNodes = int(f.readline().strip())
             nodes = np.empty(numNodes, dtype=np.object)
             count = 0
             start = time.time()
@@ -93,7 +92,6 @@ class Model():
                 curNode = self.nodes[nodeID]
                 for step in range(0, self.maxDistance):
                     direction = np.random.uniform()
-                    # print("Traveling. Direction = {}. probStay = {}. probNorth = {}. probEast = {}. probSouth = {}. probWest = {}.".format(direction, curNode.probStay, curNode.probNorth, curNode.probEast, curNode.probSouth, curNode.probWest))
                     if direction < curNode.probStay:
                         pass
                     elif (direction - curNode.probStay) < curNode.probNorth:

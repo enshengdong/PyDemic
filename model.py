@@ -11,7 +11,7 @@ class Model():
     (distance a contagious traveler could be expected to cover in our given time step), and transmissionRate (percentage of people a 
     contagious person will infect out of the total people they'll come in contact with).
     """
-    def __init__(self,filename,immunityRate,fatalityRate,maxDistance,transmissionRate):
+    def __init__(self, filename, immunityRate, fatalityRate, maxDistance, transmissionRate):
         """
         Initializes model with given information.
         """
@@ -37,16 +37,19 @@ class Model():
                 nodes[count] = node.Node(*(inputs))
                 count += 1
             print("{0} nodes loaded into a model in {1:.2f} seconds.".format(count, time.time() - start))
-            nodes[10].incubation1 += 30
-            for i in range(0,5):
-                nodes[np.random.randint(0,numNodes)].incubation1 += 5
+            
         return nodes[:count] # TO-DO: REMOVE
+
+    def startEpidemic(self):
+        self.nodes[10].incubation1 += 30
+        for i in range(0,5):
+            self.nodes[np.random.randint(0,len(self.nodes))].incubation1 += 5
 
     def turn(self):
         """
         Subroutine that simulates one timestep in our model.
         """
-        self.stateChange()
+        self.changeStates()
         self.travel()
         self.resetContagious()
 
@@ -56,7 +59,7 @@ class Model():
             node.contagiousA += node.contagiousB
             node.contagiousB = 0
 
-    def stateChange(self):
+    def changeStates(self):
         """
         Subroutine that determines, for every time step, moves everyone in incubation2 state
         into the contagious state, around half of the people in the incubation1 state into the
@@ -91,8 +94,8 @@ class Model():
         person travels to, and uses the given fatality rate to whether
         the contagious person dies or recovers.
         """
-        for i in range(0,len(self.nodes)):
-            for j in range(0,self.nodes[i].contagiousA):
+        for i in range(0, len(self.nodes)):
+            for j in range(0, self.nodes[i].contagiousA):
                 curNode = self.nodes[i]
                 for step in range(0,2050):
                     direction = np.random.uniform()

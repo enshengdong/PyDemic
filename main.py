@@ -10,6 +10,7 @@ transmissionRate = .5  # chance you'll infect a given person you come in contact
 # --- START MODEL
 print "Creating model..."
 m = model.Model("data/nodes.dat", immunityRate, fatalityRate, maxDistance, transmissionRate)
+m.startEpidemic()
 print "Starting turns..."
 
 for i in range(0, 2):

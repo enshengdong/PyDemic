@@ -52,24 +52,6 @@ class Node():
             self.incubation1 += self.susceptible
             self.susceptible = 0
 
-    def getLatLong(self):
-        """
-        Subroutine that returns latitude and longitude in a convenient format for our parser.
-        """
-        return [self.longitude,self.latitude,1.0]
-
-    def getIncubating(self):
-        """
-        Subroutine that returns the number of people in the incubutation stage of the disease in a convenient format for our parser.
-        """
-        return self.incubation1 + self.incubation2
-
-    def getContagious(self):
-        """
-        Subroutine that returns the number of people in the contagious stage of the disease in a convenient format for our parser.
-        """
-        return self.contagiousA + self.contagiousB
-
     def __str__(self):
         """
         to_string subroutine that combines all of the interesting data (latitude, longitude, immune, susceptible, incubation1, 

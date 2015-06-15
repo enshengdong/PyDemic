@@ -1,7 +1,7 @@
 import numpy as np
-import time
+import os, time
 import node
-import os
+
 
 class Model():
     """ 
@@ -11,10 +11,11 @@ class Model():
     (distance a contagious traveler could be expected to cover in our given time step), and transmissionRate (percentage of people a 
     contagious person will infect out of the total people they'll come in contact with).
     """
-    def __init__(self, filename, immunityRate, fatalityRate, maxDistance, transmissionRate):
+    def __init__(self, name, filename, immunityRate, fatalityRate, maxDistance, transmissionRate):
         """
         Initializes model with given information.
         """
+        self.name = name
         self.filename = filename
         self.immunityRate = immunityRate
         self.fatalityRate = fatalityRate
@@ -84,7 +85,7 @@ class Model():
         Subroutine goes through every contagious person who can travel, 
         decides if stay or travel up to the given distance,
         runs the subroutine node.infect() for every node the contagious
-        person travels to, and uses the given fatality rate to whether
+        person travels to, and uses the given fatality rate to determine whether
         the contagious person dies or recovers.
         """
         for nodeID in range(0, len(self.nodes)):
@@ -92,18 +93,19 @@ class Model():
                 curNode = self.nodes[nodeID]
                 for step in range(0, self.maxDistance):
                     direction = np.random.uniform()
+                    # print("Traveling. Direction = {}. probStay = {}. probNorth = {}. probEast = {}. probSouth = {}. probWest = {}.".format(direction, curNode.probStay, curNode.probNorth, curNode.probEast, curNode.probSouth, curNode.probWest))
                     if direction < curNode.probStay:
                         pass
                     elif (direction - curNode.probStay) < curNode.probNorth:
                         curNode = self.nodes[curNode.northNID]
                     elif (direction - curNode.probStay - curNode.probNorth) < curNode.probEast:
                         curNode = self.nodes[curNode.eastNID]
-                    elif (direction - curNode.probStay - curNode.probNorth
-                              - curNode.probEast) < curNode.probSouth:
+                    elif (direction - curNode.probStay - curNode.probNorth - curNode.probEast) < curNode.probSouth:
                         curNode = self.nodes[curNode.southNID]
                     else:
                         curNode = self.nodes[curNode.westNID]
                     curNode.infect()
+                
                 if np.random.uniform() <= self.fatalityRate:
                     curNode.dead += 1
                 else:
@@ -116,20 +118,20 @@ class Model():
             node.contagiousA += node.contagiousB
             node.contagiousB = 0
 
-    def dump(self, frame):
+    def dump(self, runName, frame):
         """
         Subroutine that prints out the data in the graph in a format convenient for our parser.
         """
-        dead = 0
         if not os.path.exists("data/dumps"):
             os.mkdir("data/dumps")
 
-        with open("data/dumps/graphLong.{}.dmp".format(frame), "w") as out:
+        dead = 0
+        with open("data/dumps/graph{0}.{1}.dmp".format(runName, frame), "w") as f:
             for node in self.nodes:
                 if node is not None:
                     dead += node.dead
-                    out.write(str(node)+"\n")
-        print "{} Dead".format(dead)
+                    f.write(str(node)+"\n")
+        print("{} Dead".format(dead))
 
 
 

@@ -2,6 +2,10 @@ import numpy
 from popdata import *
 from collections import deque
 
+"""
+Comment
+"""
+
 arr = numpy.load('node.npy')
 pts = None
 with open('cities.dat', 'r') as f:

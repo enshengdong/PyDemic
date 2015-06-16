@@ -1,6 +1,10 @@
 import numpy
 from popdata import *
 
+"""
+Comment
+"""
+
 #emptyval = float(numpy.finfo(numpy.float32).min)
 emptyval = -1000.0
 

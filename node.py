@@ -1,5 +1,9 @@
 import numpy as np
 
+"""
+Comment
+"""
+
 class Node():
     """ 
     Helper Node class. Represents a 1km x 1km tile. Takes in Node ID, latitude, longitude, population, the probability of contagious people 

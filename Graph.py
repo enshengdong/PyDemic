@@ -3,6 +3,10 @@ __author__ = 'Dan.Simon'
 import numpy as np
 import sys
 
+"""
+Comment
+"""
+
 class Node():
     """
     s - succeptible

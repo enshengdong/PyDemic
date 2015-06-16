@@ -1,3 +1,7 @@
+"""
+Comment
+"""
+
 status = False
 try:
     import snap

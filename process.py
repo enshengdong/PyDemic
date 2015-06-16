@@ -4,6 +4,10 @@ from popdata import *
 import time
 import glob
 
+"""
+Comment
+"""
+
 def dataToArray(data, roi, attr, emptyval):
     (xcoords, ycoords) = getCoords(roi)
     arr = numpy.full((len(ycoords), len(xcoords)), emptyval, dtype=numpy.float32)

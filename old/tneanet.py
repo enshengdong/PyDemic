@@ -2,6 +2,10 @@ import random
 import sys
 from snap import *
 
+"""
+Comment
+"""
+
 def PrintGStats(s, Graph):
     '''
     Print graph statistics

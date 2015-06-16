@@ -1,5 +1,9 @@
 from snap import *
 
+"""
+Comment
+"""
+
 def printGStats(s, Graph):
     '''
     Print graph statistics

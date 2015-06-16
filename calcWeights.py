@@ -1,6 +1,10 @@
 from __future__ import print_function
 import numpy
 
+"""
+Comment
+"""
+
 nodes = numpy.load('node.npy')
 
 maxpop = max(nodes['pop'])

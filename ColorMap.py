@@ -1,7 +1,10 @@
-
 __author__ = 'Dan.Simon'
 
 import numpy as np
+
+"""
+Comment
+"""
 
 def colorMap(gray):
     out = np.zeros((gray.shape[0],gray.shape[1],3),dtype=np.float64)

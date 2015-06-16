@@ -5,6 +5,10 @@ import numpy
 import math
 import sys
 
+"""
+Comment
+"""
+
 geoTIFF = gdal.Open(sys.argv[1])
 rows = geoTIFF.RasterYSize
 cols = geoTIFF.RasterXSize

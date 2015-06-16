@@ -2,6 +2,10 @@ import numpy as np
 import os, time
 import node
 
+"""
+Comment
+"""
+
 class Model():
     """ 
     The Model classes represents our overall network-based model. It takes in a filename of all data necessary to initialize each node

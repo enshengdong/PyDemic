@@ -1,6 +1,10 @@
 import model
 import time
 
+"""
+Comment
+"""
+
 # --- EVOLUTION FACTORS
 immunityRate = .1  # percentage of people immune
 fatalityRate = .6  # chance of dying vs recovering (becoming immune)

@@ -2,6 +2,10 @@ from snap import *
 import numpy as np
 # import sys
 
+"""
+Comment
+"""
+
 def printStats(s, g):
     '''
     Print graph statistics

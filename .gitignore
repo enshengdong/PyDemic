@@ -2,3 +2,4 @@ data
 *.dmp
 Dumps
 *.tif
+*.pyc

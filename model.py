@@ -2,7 +2,23 @@ import numpy as np
 import time
 import h5py
 
-class Node():
+
+class Model(np.ndarray):
+    def __new__(subtype,shape,dtype=float,buffer=None,offset=0,strides=None,order=None,info=None):
+        """
+        Create the ndarray instance of our type, given the usual
+        ndarray input arguments.  This will call the standard
+        ndarray constructor, but return an object of our type.
+        It also triggers a call to InfoArray.__array_finalize__
+        """
+        obj = np.ndarray.__new__(subtype,shape,dtype,buffer,offset,strides,order)
+        obj.info = info
+        return obj
+
+    def __init__(self):
+        pass
+
+class Node_OLD():
     """ 
     Helper Node class. Represents a 1km x 1km tile. Takes in Node ID, latitude, longitude, population, the probability of contagious people 
     going North when traveling, the ID of the node to the North, the probability of contagious people going East when traveling, the ID of 
@@ -90,7 +106,7 @@ class Node():
         return out
 
 
-class Model():
+class Model_OLD():
     """ 
     The Model classes represents our overall network-based model. It takes in a filename of all data necessary to initialize each node
     (sans immuneRate, which is passed into the model during creation). It also takes in evolutionary factors immuneRate (the percentage 

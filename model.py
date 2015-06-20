@@ -1,152 +1,52 @@
 import numpy as np
 import time
-import h5py
+import os
+from Utility import timeSTR
 
-
-class Model(np.ndarray):
-    def __new__(subtype,shape,dtype=float,buffer=None,offset=0,strides=None,order=None,info=None):
-        """
-        Create the ndarray instance of our type, given the usual
-        ndarray input arguments.  This will call the standard
-        ndarray constructor, but return an object of our type.
-        It also triggers a call to InfoArray.__array_finalize__
-        """
-        obj = np.ndarray.__new__(subtype,shape,dtype,buffer,offset,strides,order)
-        obj.info = info
-        return obj
-
-    def __init__(self):
-        pass
-
-class Node_OLD():
-    """ 
-    Helper Node class. Represents a 1km x 1km tile. Takes in Node ID, latitude, longitude, population, the probability of contagious people 
-    going North when traveling, the ID of the node to the North, the probability of contagious people going East when traveling, the ID of 
-    the node to the East, the probability of contagious people going South when traveling, the ID of the node to the South, the probability 
-    of contagious people going West when traveling, the ID of the node to the North, the probability of contagious people staying instead of
-    traveling, and the percentage of the overall population who are immune to the disease. 
-
-    Has nid,latitude,longitude,population,probNorth,northNID,probEast,eastNID,probSouth,southNID,probWest,westNID,probStay,immuneRate,immune,
-    susceptible,incubation1,incubation2,contagiousA,contagiousB, and dead fields. Immune, susceptible, ... fields all represent the total number
-    of people in that 1km x 1km region who are in that stage of the disease. ContagiousB is used to store contagious people who have all traveled
-    before; when calculating the number of contagious people in a given node, you should sum contagiousA and contagious B.
+class Model():
     """
-    def __init__(self,nid,latitude,longitude,population,probNorth,northNID,probEast,eastNID,probSouth,southNID,probWest,westNID,probStay,immuneRate):
-        """
-        Initializes node with given information.
-        """
-        self.nid = int(nid)
-        self.latitude = latitude
-        self.longitude = longitude
-        self.probNorth = probNorth
-        self.northNID = int(northNID)
-        self.probEast = probEast
-        self.eastNID = int(eastNID)
-        self.probSouth = probSouth
-        self.southNID = int(southNID)
-        self.probWest = probWest
-        self.westNID = int(westNID)
-        self.probStay = probStay
-
-        self.immune = int(round(population * immuneRate))
-        self.susceptible = int(round(population - self.immune))
-        self.incubation1 = 0
-        self.incubation2 = 0
-        self.contagiousA = 0
-        self.contagiousB = 0  
-        self.dead = 0
-
-    def infect(self):
-        """
-        Subroutine that nodes run when a contagious person passes through to determine how many people that contagious person infects.
-        Automatically updates information.
-        """
-        y = 10  # people interacted with * transmission probability
-        I = np.random.poisson(y)
-        if I <= self.susceptible:
-            self.susceptible -= I
-            self.incubation1 += I
-        else:
-            self.incubation1 += self.susceptible
-            self.susceptible = 0
-
-    def getLatLong(self):
-        """
-        Subroutine that returns latitude and longitude in a convenient format for our parser.
-        """
-        return [self.longitude,self.latitude,1.0]
-
-    def getIncubating(self):
-        """
-        Subroutine that returns the number of people in the incubutation stage of the disease in a convenient format for our parser.
-        """
-        return self.incubation1 + self.incubation2
-
-    def getContagious(self):
-        """
-        Subroutine that returns the number of people in the contagious stage of the disease in a convenient format for our parser.
-        """
-        return self.contagiousA + self.contagiousB
-
-    def __str__(self):
-        """
-        to_string subroutine that combines all of the interesting data (latitude, longitude, immune, susceptible, incubation1, 
-        incubation2, contagiousA, contagiousB, dead) in each node in a convenient format for our parser.
-        """
-        out = ""
-        out += str(self.latitude) + ":"
-        out += str(self.longitude) + ":"
-        out += str(self.immune) + ":"
-        out += str(self.susceptible) + ":"
-        out += str(self.incubation1) + ":"
-        out += str(self.incubation2) + ":"
-        out += str(self.contagiousA) + ":"
-        out += str(self.contagiousB) + ":"
-        out += str(self.dead)
-        return out
-
-
-class Model_OLD():
-    """ 
     The Model classes represents our overall network-based model. It takes in a filename of all data necessary to initialize each node
-    (sans immuneRate, which is passed into the model during creation). It also takes in evolutionary factors immuneRate (the percentage 
-    of the population immune to the disease), fatalityRate (how likely it is a sick person will die or recover), averageDistance 
-    (distance a contagious traveler could be expected to cover in our given time step), and transmissionRate (percentage of people a 
+    (sans immuneRate, which is passed into the model during creation). It also takes in evolutionary factors immuneRate (the percentage
+    of the population immune to the disease), fatalityRate (how likely it is a sick person will die or recover), averageDistance
+    (distance a contagious traveler could be expected to cover in our given time step), and transmissionRate (percentage of people a
     contagious person will infect out of the total people they'll come in contact with).
     """
-    def __init__(self,filename,immuneRate,fatalityRate,averageDistance,transmissionRate):
+    __slots__ = ('data','mapping','immuneRate','fatalityRate','maxDistance','transmissionRate')
+
+    def __init__(self,fname,immuneRate,fatalityRate,maxDistance,transmissionRate):
         """
         Initializes model with given information.
         """
-        self.filename = filename
+        self.mapping = {'nid': 0,'latitude': 1,'longititude': 2,'population': 3,
+                        'probNorth': 4,'northNid': 5,'probEast': 6,'eastNid': 7,
+                        'probSouth': 8,'southNid': 9,'probWest': 10,'westNid': 11,
+                        'probStay': 12,'immune': 13,'susceptible': 14,'incubation1': 15,
+                        'incubation2': 16,'contagious': 17,'dead': 18}
+        fileData = np.loadtxt(fname,dtype=float,comments='#',delimiter=':',skiprows=1)
+        calcData = np.zeros((fileData.shape[0],6),dtype=float)
+        calcData[:,0] = np.random.poisson(fileData[:,3] * immuneRate,fileData.shape[0])
+        calcData[:,1] = np.around(fileData[:,3] - calcData[:,0])
+        self.data = np.hstack((fileData,calcData))
         self.immuneRate = immuneRate
         self.fatalityRate = fatalityRate
-        self.averageDistance = averageDistance
+        self.maxDistance = maxDistance
+        self.transmissionRate = transmissionRate
 
-        self.nodes = self._readFile()  # np.array of _Node objects
+    def __getattr__(self,attr):
+        """
+        Emulates named slots but actually gets the corresponding numpy column
+        """
+        if attr in self.mapping:
+            idx = self.mapping[attr]
+            return self.data[:,idx]
+        else:
+            return __dict__[attr]
 
-    def _readFile(self):
-        """
-        Helper subroutine that reads the given filename and initializes all the nodes.
-        """
-        with open(self.filename,"r") as f:
-            numNodes = int(f.next().strip())
-            nodes = np.empty(numNodes,dtype=np.object)
-            count = 0
-            start = time.time()
-            for line in f:
-                inputs = [float(f) for f in line[:-1].split(':')]
-                inputs.append(self.immuneRate)
-                nodes[count] = Node(*(inputs))
-                count += 1
-                # if count > 1000000:
-                #    break
-            print("Graph creation time: " + str(time.time() - start))
-            print("Created %d nodes" % (count))
-            nodes[10].incubation1 += 30
-            for i in range(0,5):
-                nodes[np.random.randint(0,numNodes)].incubation1 += 5
-        return nodes
+    def __getitem__(self,key):
+        if isinstance(key,tuple):
+            return self.data[key]
+        else:
+            return self.data[key,:]
 
     def turn(self):
         """
@@ -154,81 +54,92 @@ class Model_OLD():
         """
         self.stateChange()
         self.travel()
-        self.resetContagious()
-
-
-    def resetContagious(self):
-        for i in range(0,self.nodes.shape[0] - 1):
-            node = self.nodes[i]
-            node.contagiousA += node.contagiousB
-            node.contagiousB = 0
 
     def stateChange(self):
         """
         Subroutine that determines, for every time step, moves everyone in incubation2 state
         into the contagious state, around half of the people in the incubation1 state into the
-        incubation2 state, and the other half of the people in the incubation1 state into the 
-        contagious state. It runs the node.infect() subroutine for every contagious person in 
+        incubation2 state, and the other half of the people in the incubation1 state into the
+        contagious state. It runs the node.infect() subroutine for every contagious person in
         all nodes at the end of this state change.
 
-        People moved to the contagious state are moved into contagiousB because people can only 
+        People moved to the contagious state are moved into contagiousB because people can only
         have one state transition a turn. ContagiousB is the set of contagious people who have already
         moved or done a state transition and so can't move for the rest of the timestep.
         """
-        for i in range(0,self.nodes.shape[0] - 1):
-            node = self.nodes[i]
-            # print("node.contagiousB = " + str(node.contagiousB))
-            node.contagiousB += node.incubation2
-            node.incubation2 = 0
-            numInc1 = node.incubation1
-            for i in range(0, numInc1):
-                if np.random.uniform() <= .5:
-                    node.incubation2 += 1
-                else:
-                    node.contagiousB += 1
-                node.incubation1 -= 1
-            for i in range(0, node.contagiousA + node.contagiousB):
-                node.infect()
+        # No need to infect, travel infects the destination
+        # Add dying or surviving as it makes sense to change with the rest of the game state
+        dead = np.clip(np.random.poisson(self.fatalityRate * self.data[:,17]),0,self.data[:,17])
+        self.data[:,18] += dead
+        self.data[:,13] += self.data[:,17] - dead
+        self.data[:,17] = 0
+        # incubation2 to contagious and reset incubation
+        self.data[:,17] += self.data[:,16]
+        self.data[:,16] = 0
+        # Aproximately half of incubation1 go to incubation2 rest go to contagiousB
+        incu2 = np.clip(np.random.poisson(0.5 * self.data[:,15]),0,self.data[:,15])
+        #print("Average Incu2 {}".format(0.5 * self.data[7:13,15]))
+        #print("# TO Incu2 {}".format(incu2[7:13]))
+        self.data[:,16] += incu2
+        self.data[:,17] += self.data[:,15] - incu2
+        self.data[:,15] = 0
+
+    def infect(self,contagious):
+        """
+        Calculates the newly infected people for all nodes at the given step in the day
+        :param contagious:
+        :return:
+        """
+        # Transmission rate is infections per person per travel step
+        # Clip makes sure you cant infect more people than there are susceptible
+        infected = np.clip(np.random.poisson(contagious * self.transmissionRate),0,self.data[:,14])
+        self.data[:,15] += infected
+        self.data[:,14] -= infected
 
     def travel(self):
         """
-        Subroutine goes through every contagious person who can travel, 
+        Subroutine goes through every contagious person who can travel,
         decides if stay or travel up to the given distance (2050km),
         runs the subroutine node.infect() for every node the contagious
         person travels to, and uses the given fatality rate to whether
         the contagious person dies or recovers.
         """
-        for i in range(0,self.nodes.shape[0] - 1):
-            for j in range(0,self.nodes[i].contagiousA):
-                curNode = self.nodes[i]
-                for step in range(0,2050):
-                    direction = np.random.uniform()
-                    if direction < curNode.probStay:
-                        pass
-                    elif (direction - curNode.probStay) < curNode.probNorth:
-                        curNode = self.nodes[curNode.northNID]
-                    elif (direction - curNode.probStay - curNode.probNorth) < curNode.probEast:
-                        curNode = self.nodes[curNode.eastNID]
-                    elif (direction - curNode.probStay - curNode.probNorth
-                              - curNode.probEast) < curNode.probSouth:
-                        curNode = self.nodes[curNode.southNID]
-                    else:
-                        curNode = self.nodes[curNode.westNID]
-                    curNode.infect()
-                if np.random.uniform() <= self.fatalityRate:
-                    curNode.dead += 1
-                else:
-                    curNode.immune += 1
-                self.nodes[i].contagiousA -= 1
+        moving = np.zeros((self.data.shape[0],2),dtype=float)
+        # Move contagious people to travel matrix
+        moving[:,0] = self.data[:,17]
+        # Adjacency is a matrix of the nids n,e,s,w
+        # Clip prevents -1 indices from going to 4294967295 and causing an error
+        adjacency = np.clip(self.data[:,[5,7,9,11]],0,self.data.shape[1]).astype(np.uint32)
+        for step in range(0,self.maxDistance):
+            stay = np.clip(np.random.poisson(self.data[:,12] * moving[:,0]),0,moving[:,0])
+            moving[:,1] += stay
+            moving[:,0] -= stay
+            north = np.clip(np.random.poisson(self.data[:,4] * moving[:,0]),0,moving[:,0])
+            moving[adjacency[:,0].tolist(),1] += north
+            moving[:,0] -= north
+            east = np.clip(np.random.poisson(self.data[:,6] * moving[:,0]),0,moving[:,0])
+            moving[adjacency[:,1].tolist(),1] += east
+            moving[:,0] -= east
+            south = np.clip(np.random.poisson(self.data[:,8] * moving[:,0]),0,moving[:,0])
+            moving[adjacency[:,2].tolist(),1] += south
+            moving[:,0] -= south
+            west = moving[:,0]  # Everybody else goes west
+            moving[adjacency[:,3].tolist(),1] += west
+            moving[:,0] -= west
+            # INFECT AND RESET TEMP ARRAY
+            self.infect(moving[:,1])
+            # Roll effectively switches the two columns
+            moving = np.roll(moving,1,1)
+        self.data[:,17] = moving[:,0]
 
-    def dump(self,frame):
-        """
-        Subroutine that prints out the data in the graph in a format convenient for our parser.
-        """
-        with open("graphLong.%d.dmp" % (frame),"w") as out:
-            for node in self.nodes:
-                if node is not None:
-                    out.write(str(node)+"\n")
+    def dump(self,runName,frame):
+        if not os.path.exists("data/dumps"):
+            os.mkdir("data/dumps")
+        out = self.data[:,[13,14,15,16,17,18]].astype(np.uint16)
+        np.savetxt('data/dumps/graph.{0}.{1}.dmp'.format(runName, frame),out[:5000,:],fmt='%i',delimiter=':')
 
-
-
+if __name__ == '__main__':
+    a = Model("data/node.dat",0.2,0,0,0)
+    print(a.nid)
+    print(a[0])
+    print(a[0:3].nid)

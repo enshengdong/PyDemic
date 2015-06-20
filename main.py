@@ -1,20 +1,26 @@
 import model
 import time
+import numpy as np
+from Utility import timeSTR,beep
 
 # --- EVOLUTION FACTORS
-immuneRate = .1	 # percentage of people immune
-fatalityRate = .6 # chance of dying vs recovering (becoming immune)
-averageDistance = 1000 # kilometers per day an average person in Africa can travel:
-transmissionRate = .5 # chance you'll infect a given person you come in contact with
+immuneRate = 0.1  # percentage of people immune
+fatalityRate = 0.6  # chance of dying vs recovering (becoming immune)
+maxDistance = 100  # kilometers per day an average person in Africa can travel:
+transmissionRate = 0.1  # People infected by one person in per stop
 
 # --- START MODEL
-print "Starting model..."
-m = model.Model("data/node.dat", immuneRate, fatalityRate, averageDistance, transmissionRate)
-print "Finished model. Starting turn..."
-#m.viz()
-for i in range(0,1000):
-	m.turn()
-	start = time.time()
-	if i % 1 == 0:
-		m.dump(i)
-	print "Finished turn %d in %d seconds" % (i,time.time()-start)
+print("Starting model...")
+start = time.time()
+m = model.Model("data/node.dat", immuneRate, fatalityRate, maxDistance, transmissionRate)
+m.data[10,16] += 20
+print("Finished loading model in {0}. Starting turns...".format(timeSTR(time.time() - start)))
+for i in range(0, 1):
+    start = time.time()
+    m.turn()
+    if i % 1 == 0:
+        pass
+        #m.dump('test',i)
+    print("Finished turn {0} in {1}".format(i,timeSTR(time.time() - start)))
+    print("{0} traveling contagious and {1} dead".format(np.sum(m.data[:,17]), np.sum(m.data[:,18])))
+beep()

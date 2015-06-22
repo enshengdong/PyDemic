@@ -92,9 +92,14 @@ class Model():
         """
         # Transmission rate is infections per person per travel step
         # Clip makes sure you cant infect more people than there are susceptible
-        infected = np.clip(np.random.poisson(contagious * self.transmissionRate),0,self.data[:,14])
-        self.data[:,15] += infected
-        self.data[:,14] -= infected
+        #print("Contagious shape {}".format(contagious.shape))
+        contLoc = contagious.nonzero()[0]
+        subCont = contagious[contLoc]
+        #print("Contagious locations: {}".format(contLoc))
+        #print("Contagious subsection: {}".format(subCont))
+        infected = np.clip(np.random.poisson(subCont * self.transmissionRate),0,self.data[contLoc,14])
+        self.data[contLoc,15] += infected
+        self.data[contLoc,14] -= infected
 
     def travel(self):
         """
@@ -104,32 +109,78 @@ class Model():
         person travels to, and uses the given fatality rate to whether
         the contagious person dies or recovers.
         """
+        # People are disappearing for some reason around the 30 step mark
+        # No idea why
+        movable = np.zeros((self.data.shape[0],2),dtype=float)
+        movable[:,0] = np.copy(self.data[:,17])
+        adjacency = np.clip(self.data[:,[5,7,9,11]],0,np.inf)
+        for step in range(0,self.maxDistance):
+            movingIDX = movable[:,0].nonzero()[0]
+            moving = movable[movingIDX,:]
+            stay = np.random.poisson(self.data[movingIDX,12] * moving[:,0])
+            print(movingIDX)
+            print(moving)
+            print(self.data[movingIDX,12] * moving[:,0])
+            print(stay)
+        return
+
         moving = np.zeros((self.data.shape[0],2),dtype=float)
         # Move contagious people to travel matrix
-        moving[:,0] = self.data[:,17]
+        moving[:,0] = np.copy(self.data[:,17])
         # Adjacency is a matrix of the nids n,e,s,w
         # Clip prevents -1 indices from going to 4294967295 and causing an error
-        adjacency = np.clip(self.data[:,[5,7,9,11]],0,self.data.shape[1]).astype(np.uint32)
+        adjacency = np.clip(self.data[:,[5,7,9,11]],0,np.inf).astype(np.uint32)
+        #print(self.data[:,[5,7,9,11]])
+        #print(adjacency)
         for step in range(0,self.maxDistance):
-            stay = np.clip(np.random.poisson(self.data[:,12] * moving[:,0]),0,moving[:,0])
-            moving[:,1] += stay
-            moving[:,0] -= stay
-            north = np.clip(np.random.poisson(self.data[:,4] * moving[:,0]),0,moving[:,0])
-            moving[adjacency[:,0].tolist(),1] += north
-            moving[:,0] -= north
-            east = np.clip(np.random.poisson(self.data[:,6] * moving[:,0]),0,moving[:,0])
-            moving[adjacency[:,1].tolist(),1] += east
-            moving[:,0] -= east
-            south = np.clip(np.random.poisson(self.data[:,8] * moving[:,0]),0,moving[:,0])
-            moving[adjacency[:,2].tolist(),1] += south
-            moving[:,0] -= south
-            west = moving[:,0]  # Everybody else goes west
-            moving[adjacency[:,3].tolist(),1] += west
-            moving[:,0] -= west
+            print("Taking step {}".format(step))
+            ind = moving[:,0].nonzero()[0]
+            #print("Indicies: {}".format(ind))
+            subMoving = moving[ind,:]
+            #print("Subsection {}".format(subMoving))
+
+            stay = np.clip(np.random.poisson(self.data[ind,12] * subMoving[:,0]),0,subMoving[:,0])
+            #print("Stay {}".format(stay))
+            moving[ind,1] += stay
+            moving[ind,0] -= stay
+            print(np.sum(moving))
+            ind = moving[:,0].nonzero()[0]
+            subMoving = moving[ind,:]
+
+            north = np.clip(np.random.poisson(self.data[ind,4] * subMoving[:,0]),0,subMoving[:,0])
+            #print("North {}".format(north))
+            moving[adjacency[ind,0].tolist(),1] += north
+            moving[ind,0] -= north
+            print(np.sum(moving))
+            ind = moving[:,0].nonzero()[0]
+            subMoving = moving[ind,:]
+
+            east = np.clip(np.random.poisson(self.data[ind,6] * subMoving[:,0]),0,subMoving[:,0])
+            #print("East {}".format(east))
+            moving[adjacency[ind,1].tolist(),1] += east
+            moving[ind,0] -= east
+            print(np.sum(moving))
+            ind = moving[:,0].nonzero()[0]
+            subMoving = moving[ind,:]
+
+            south = np.clip(np.random.poisson(self.data[ind,8] * subMoving[:,0]),0,subMoving[:,0])
+            moving[adjacency[ind,2].tolist(),1] += south
+            moving[ind,0] -= south
+            print(np.sum(moving))
+            ind = moving[:,0].nonzero()[0]
+            subMoving = moving[ind,:]
+
+            west = subMoving[:,0]  # Everybody else goes west
+            #print("West {}".format(west))
+            moving[adjacency[ind,3].tolist(),1] += west
+            moving[ind,0] -= west
+            print(np.sum(moving))
+
             # INFECT AND RESET TEMP ARRAY
             self.infect(moving[:,1])
             # Roll effectively switches the two columns
             moving = np.roll(moving,1,1)
+            moving[:,1] = 0
         self.data[:,17] = moving[:,0]
 
     def dump(self,runName,frame):

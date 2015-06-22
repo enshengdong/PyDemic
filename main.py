@@ -6,14 +6,15 @@ from Utility import timeSTR,beep
 # --- EVOLUTION FACTORS
 immuneRate = 0.1  # percentage of people immune
 fatalityRate = 0.6  # chance of dying vs recovering (becoming immune)
-maxDistance = 100  # kilometers per day an average person in Africa can travel:
-transmissionRate = 0.1  # People infected by one person in per stop
+maxDistance = 1  # kilometers per day an average person in Africa can travel:
+transmissionRate = 1  # People infected by one person in per stop
 
 # --- START MODEL
 print("Starting model...")
 start = time.time()
 m = model.Model("data/node.dat", immuneRate, fatalityRate, maxDistance, transmissionRate)
 m.data[10,16] += 20
+m.data[11,16] += 20
 print("Finished loading model in {0}. Starting turns...".format(timeSTR(time.time() - start)))
 for i in range(0, 1):
     start = time.time()

@@ -3,7 +3,8 @@ import time
 import os
 from Utility import timeSTR
 
-class Model():
+
+class Model(object):
     """
     The Model classes represents our overall network-based model. It takes in a filename of all data necessary to initialize each node
     (sans immuneRate, which is passed into the model during creation). It also takes in evolutionary factors immuneRate (the percentage
@@ -78,8 +79,8 @@ class Model():
         self.data[:,16] = 0
         # Aproximately half of incubation1 go to incubation2 rest go to contagiousB
         incu2 = np.clip(np.random.poisson(0.5 * self.data[:,15]),0,self.data[:,15])
-        #print("Average Incu2 {}".format(0.5 * self.data[7:13,15]))
-        #print("# TO Incu2 {}".format(incu2[7:13]))
+        # print("Average Incu2 {}".format(0.5 * self.data[7:13,15]))
+        # print("# TO Incu2 {}".format(incu2[7:13]))
         self.data[:,16] += incu2
         self.data[:,17] += self.data[:,15] - incu2
         self.data[:,15] = 0
@@ -92,11 +93,11 @@ class Model():
         """
         # Transmission rate is infections per person per travel step
         # Clip makes sure you cant infect more people than there are susceptible
-        #print("Contagious shape {}".format(contagious.shape))
+        # print("Contagious shape {}".format(contagious.shape))
         contLoc = contagious.nonzero()[0]
         subCont = contagious[contLoc]
-        #print("Contagious locations: {}".format(contLoc))
-        #print("Contagious subsection: {}".format(subCont))
+        # print("Contagious locations: {}".format(contLoc))
+        # print("Contagious subsection: {}".format(subCont))
         infected = np.clip(np.random.poisson(subCont * self.transmissionRate),0,self.data[contLoc,14])
         self.data[contLoc,15] += infected
         self.data[contLoc,14] -= infected
@@ -109,85 +110,65 @@ class Model():
         person travels to, and uses the given fatality rate to whether
         the contagious person dies or recovers.
         """
-        # People are disappearing for some reason around the 30 step mark
-        # No idea why
+        # TODO poisson selection is not the speed issue, check the adjacency useage
+        start = time.time()
         movable = np.zeros((self.data.shape[0],2),dtype=float)
         movable[:,0] = np.copy(self.data[:,17])
-        adjacency = np.clip(self.data[:,[5,7,9,11]],0,np.inf)
-        for step in range(0,self.maxDistance):
-            movingIDX = movable[:,0].nonzero()[0]
-            moving = movable[movingIDX,:]
-            stay = np.random.poisson(self.data[movingIDX,12] * moving[:,0])
-            print(movingIDX)
-            print(moving)
-            print(self.data[movingIDX,12] * moving[:,0])
-            print(stay)
-        return
-
-        moving = np.zeros((self.data.shape[0],2),dtype=float)
-        # Move contagious people to travel matrix
-        moving[:,0] = np.copy(self.data[:,17])
-        # Adjacency is a matrix of the nids n,e,s,w
-        # Clip prevents -1 indices from going to 4294967295 and causing an error
         adjacency = np.clip(self.data[:,[5,7,9,11]],0,np.inf).astype(np.uint32)
-        #print(self.data[:,[5,7,9,11]])
-        #print(adjacency)
+        prep = time.time() - start
+        adjTotal = 0
+        overTotal1 = 0
+        overTotal2 = 0
+        startTurn = time.time()
         for step in range(0,self.maxDistance):
-            print("Taking step {}".format(step))
-            ind = moving[:,0].nonzero()[0]
-            #print("Indicies: {}".format(ind))
-            subMoving = moving[ind,:]
-            #print("Subsection {}".format(subMoving))
-
-            stay = np.clip(np.random.poisson(self.data[ind,12] * subMoving[:,0]),0,subMoving[:,0])
-            #print("Stay {}".format(stay))
-            moving[ind,1] += stay
-            moving[ind,0] -= stay
-            print(np.sum(moving))
-            ind = moving[:,0].nonzero()[0]
-            subMoving = moving[ind,:]
-
-            north = np.clip(np.random.poisson(self.data[ind,4] * subMoving[:,0]),0,subMoving[:,0])
-            #print("North {}".format(north))
-            moving[adjacency[ind,0].tolist(),1] += north
-            moving[ind,0] -= north
-            print(np.sum(moving))
-            ind = moving[:,0].nonzero()[0]
-            subMoving = moving[ind,:]
-
-            east = np.clip(np.random.poisson(self.data[ind,6] * subMoving[:,0]),0,subMoving[:,0])
-            #print("East {}".format(east))
-            moving[adjacency[ind,1].tolist(),1] += east
-            moving[ind,0] -= east
-            print(np.sum(moving))
-            ind = moving[:,0].nonzero()[0]
-            subMoving = moving[ind,:]
-
-            south = np.clip(np.random.poisson(self.data[ind,8] * subMoving[:,0]),0,subMoving[:,0])
-            moving[adjacency[ind,2].tolist(),1] += south
-            moving[ind,0] -= south
-            print(np.sum(moving))
-            ind = moving[:,0].nonzero()[0]
-            subMoving = moving[ind,:]
-
-            west = subMoving[:,0]  # Everybody else goes west
-            #print("West {}".format(west))
-            moving[adjacency[ind,3].tolist(),1] += west
-            moving[ind,0] -= west
-            print(np.sum(moving))
-
-            # INFECT AND RESET TEMP ARRAY
-            self.infect(moving[:,1])
-            # Roll effectively switches the two columns
-            moving = np.roll(moving,1,1)
-            moving[:,1] = 0
-        self.data[:,17] = moving[:,0]
+            overStart = time.time()
+            movingIDX = movable[:,0].nonzero()[0]
+            moving = np.copy(movable[movingIDX,0])
+            overTotal1 += time.time() - overStart
+            north = np.clip(np.random.poisson(np.multiply(self.data[movingIDX,4],moving)),0,moving)
+            moving -= north
+            startAdj= time.time()
+            movable[adjacency[movingIDX,0],1] += north
+            adjTotal += time.time() - startAdj
+            east = np.clip(np.random.poisson(np.multiply(self.data[movingIDX,6],moving)),0,moving)
+            moving -= east
+            startAdj= time.time()
+            movable[adjacency[movingIDX,1],1] += east
+            adjTotal += time.time() - startAdj
+            south = np.clip(np.random.poisson(np.multiply(self.data[movingIDX,8],moving)),0,moving)
+            moving -= south
+            startAdj= time.time()
+            movable[adjacency[movingIDX,2],1] += south
+            adjTotal += time.time() - startAdj
+            west = np.clip(np.random.poisson(np.multiply(self.data[movingIDX,10],moving)),0,moving)
+            moving -= west
+            startAdj= time.time()
+            movable[adjacency[movingIDX,3],1] += west
+            adjTotal += time.time() - startAdj
+            stay = np.copy(moving)
+            movable[movingIDX,1] += stay
+            movable = np.roll(movable,1,1)
+            overStart = time.time()
+            movable[:,1] = np.zeros(movable.shape[0],dtype=float)
+            overTotal2 += time.time() - overStart
+        turnTotal = time.time() - startTurn
+        self.data[:,17] = movable[:,0]
+        print("Prep time: {}".format(prep))
+        print("Total turn length: {}".format(turnTotal))
+        print("Average turn length: {}".format(turnTotal/float(self.maxDistance)))
+        print("Total adjacency calculation: {}".format(adjTotal))
+        print("Average adjacency calculation: {}".format(adjTotal/float(self.maxDistance)))
+        print("Total overhead1 calculations: {}".format(overTotal1))
+        print("Average overhead1 calculations: {}".format(overTotal1/float(self.maxDistance)))
+        print("Total overhead2 calculations: {}".format(overTotal2))
+        print("Average overhead2 calculations: {}".format(overTotal2/float(self.maxDistance)))
 
     def dump(self,runName,frame):
         if not os.path.exists("data/dumps"):
             os.mkdir("data/dumps")
         out = self.data[:,[13,14,15,16,17,18]].astype(np.uint16)
-        np.savetxt('data/dumps/graph.{0}.{1}.dmp'.format(runName, frame),out[:5000,:],fmt='%i',delimiter=':')
+        np.savetxt('data/dumps/graph.{0}.{1}.dmp'.format(runName,frame),out[:5000,:],fmt='%i',delimiter=':')
+
 
 if __name__ == '__main__':
     a = Model("data/node.dat",0.2,0,0,0)

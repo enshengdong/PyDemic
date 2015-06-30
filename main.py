@@ -6,7 +6,7 @@ from Utility import timeSTR,beep
 # --- EVOLUTION FACTORS
 immuneRate = 0.1  # percentage of people immune
 fatalityRate = 0.6  # chance of dying vs recovering (becoming immune)
-maxDistance = 1  # kilometers per day an average person in Africa can travel:
+maxDistance = 2050  # kilometers per day an average person in Africa can travel:
 transmissionRate = 1  # People infected by one person in per stop
 
 # --- START MODEL

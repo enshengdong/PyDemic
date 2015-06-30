@@ -13,15 +13,15 @@ transmissionRate = 1  # People infected by one person in per stop
 print("Starting model...")
 start = time.time()
 m = model.Model("data/node.dat", immuneRate, fatalityRate, maxDistance, transmissionRate)
-m.data[10,16] += 20
-m.data[11,16] += 20
+m.data[16,10] += 20
+m.data[16,11] += 20
 print("Finished loading model in {0}. Starting turns...".format(timeSTR(time.time() - start)))
-for i in range(0, 1):
+for i in range(0, 10):
     start = time.time()
     m.turn()
     if i % 1 == 0:
         pass
         #m.dump('test',i)
     print("Finished turn {0} in {1}".format(i,timeSTR(time.time() - start)))
-    print("{0} traveling contagious and {1} dead".format(np.sum(m.data[:,17]), np.sum(m.data[:,18])))
+    print("{0} traveling contagious and {1} dead".format(np.sum(m.data[17,:]), np.sum(m.data[18,:])))
 beep()

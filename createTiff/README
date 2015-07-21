@@ -1,2 +1,5 @@
-Requires libgdal-dev and libboost-dev
+Requires libgdal-dev, libboost-dev, and libboost-program-options-dev.
 
+Program will read data from standard input in three column,
+space separated values format (lat, long, data).  See --help for more
+options.
